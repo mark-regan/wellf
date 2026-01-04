@@ -1,0 +1,227 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/mark-regan/wellf/internal/middleware"
+	"github.com/mark-regan/wellf/internal/services"
+)
+
+type AuthHandler struct {
+	authService *services.AuthService
+}
+
+func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+	return &AuthHandler{authService: authService}
+}
+
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req services.RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ErrorWithDetails(w, http.StatusBadRequest, "Invalid request body", err.Error())
+		return
+	}
+
+	user, err := h.authService.Register(r.Context(), &req)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrEmailAlreadyExists):
+			Error(w, http.StatusConflict, "Email already registered")
+		case errors.Is(err, services.ErrWeakPassword):
+			Error(w, http.StatusBadRequest, "Password must be at least 12 characters with uppercase, lowercase, number, and special character")
+		case errors.Is(err, services.ErrInvalidEmail):
+			Error(w, http.StatusBadRequest, "Invalid email format")
+		default:
+			Error(w, http.StatusInternalServerError, "Failed to create account")
+		}
+		return
+	}
+
+	JSON(w, http.StatusCreated, map[string]interface{}{
+		"message": "Account created successfully",
+		"user": map[string]interface{}{
+			"id":            user.ID,
+			"email":         user.Email,
+			"display_name":  user.DisplayName,
+			"base_currency": user.BaseCurrency,
+		},
+	})
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req services.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		Error(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	tokens, user, err := h.authService.Login(r.Context(), &req)
+	if err != nil {
+		if errors.Is(err, services.ErrInvalidCredentials) {
+			Error(w, http.StatusUnauthorized, "Invalid credentials")
+			return
+		}
+		Error(w, http.StatusInternalServerError, "Login failed")
+		return
+	}
+
+	JSON(w, http.StatusOK, map[string]interface{}{
+		"access_token":  tokens.AccessToken,
+		"refresh_token": tokens.RefreshToken,
+		"expires_in":    tokens.ExpiresIn,
+		"token_type":    tokens.TokenType,
+		"user": map[string]interface{}{
+			"id":            user.ID,
+			"email":         user.Email,
+			"display_name":  user.DisplayName,
+			"base_currency": user.BaseCurrency,
+		},
+	})
+}
+
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		Error(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	tokens, err := h.authService.RefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		Error(w, http.StatusUnauthorized, "Invalid or expired refresh token")
+		return
+	}
+
+	JSON(w, http.StatusOK, tokens)
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	user, err := h.authService.GetUser(r.Context(), userID)
+	if err != nil {
+		Error(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	JSON(w, http.StatusOK, map[string]interface{}{
+		"id":            user.ID,
+		"email":         user.Email,
+		"display_name":  user.DisplayName,
+		"base_currency": user.BaseCurrency,
+		"date_format":   user.DateFormat,
+		"locale":        user.Locale,
+		"fire_target":   user.FireTarget,
+		"fire_enabled":  user.FireEnabled,
+		"created_at":    user.CreatedAt,
+		"last_login_at": user.LastLoginAt,
+	})
+}
+
+func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		DisplayName  string   `json:"display_name"`
+		BaseCurrency string   `json:"base_currency"`
+		DateFormat   string   `json:"date_format"`
+		Locale       string   `json:"locale"`
+		FireTarget   *float64 `json:"fire_target"`
+		FireEnabled  *bool    `json:"fire_enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		Error(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	user, err := h.authService.GetUser(r.Context(), userID)
+	if err != nil {
+		Error(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	if req.DisplayName != "" {
+		user.DisplayName = req.DisplayName
+	}
+	if req.BaseCurrency != "" {
+		user.BaseCurrency = req.BaseCurrency
+	}
+	if req.DateFormat != "" {
+		user.DateFormat = req.DateFormat
+	}
+	if req.Locale != "" {
+		user.Locale = req.Locale
+	}
+	if req.FireTarget != nil {
+		user.FireTarget = req.FireTarget
+	}
+	if req.FireEnabled != nil {
+		user.FireEnabled = *req.FireEnabled
+	}
+
+	if err := h.authService.UpdateUser(r.Context(), user); err != nil {
+		Error(w, http.StatusInternalServerError, "Failed to update user")
+		return
+	}
+
+	JSON(w, http.StatusOK, map[string]interface{}{
+		"id":            user.ID,
+		"email":         user.Email,
+		"display_name":  user.DisplayName,
+		"base_currency": user.BaseCurrency,
+		"date_format":   user.DateFormat,
+		"locale":        user.Locale,
+		"fire_target":   user.FireTarget,
+		"fire_enabled":  user.FireEnabled,
+	})
+}
+
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		Error(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	err := h.authService.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrInvalidCredentials):
+			Error(w, http.StatusUnauthorized, "Current password is incorrect")
+		case errors.Is(err, services.ErrWeakPassword):
+			Error(w, http.StatusBadRequest, "New password does not meet requirements")
+		default:
+			Error(w, http.StatusInternalServerError, "Failed to change password")
+		}
+		return
+	}
+
+	JSON(w, http.StatusOK, map[string]string{"message": "Password changed successfully"})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// For stateless JWT, logout is handled client-side
+	// Optionally, we could blacklist the token in Redis
+	JSON(w, http.StatusOK, map[string]string{"message": "Logged out successfully"})
+}
