@@ -59,3 +59,25 @@ shell-db: ## Shell into database
 setup: ## Initial project setup
 	cp .env.example .env
 	@echo "Please edit .env with your configuration"
+
+# Production commands
+prod: ## Start production environment with Cloudflare tunnel
+	docker-compose -f docker-compose.prod.yml up --build -d
+
+prod-logs: ## View production logs
+	docker-compose -f docker-compose.prod.yml logs -f
+
+prod-stop: ## Stop production environment
+	docker-compose -f docker-compose.prod.yml down
+
+prod-restart: ## Restart production environment
+	docker-compose -f docker-compose.prod.yml down
+	docker-compose -f docker-compose.prod.yml up --build -d
+
+prod-backup: ## Backup production database
+	@mkdir -p backups
+	docker-compose -f docker-compose.prod.yml exec -T db pg_dump -U $${DB_USER:-wellf} $${DB_NAME:-wellf} > backups/wellf-$$(date +%Y%m%d-%H%M%S).sql
+	@echo "Backup saved to backups/"
+
+prod-shell-db: ## Shell into production database
+	docker-compose -f docker-compose.prod.yml exec db psql -U $${DB_USER:-wellf}

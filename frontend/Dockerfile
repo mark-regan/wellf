@@ -21,6 +21,8 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+ARG PORT=80
+
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
@@ -28,10 +30,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 RUN chmod -R 644 /usr/share/nginx/html/* && \
     find /usr/share/nginx/html -type d -exec chmod 755 {} \;
 
-# Copy nginx configuration
+# Copy nginx configuration and set port
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN sed -i "s/listen 80;/listen ${PORT};/" /etc/nginx/conf.d/default.conf
 
 # Expose port
-EXPOSE 80
+EXPOSE ${PORT}
 
 CMD ["nginx", "-g", "daemon off;"]

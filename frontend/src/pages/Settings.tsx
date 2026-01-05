@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
 import { Theme } from '@/types';
-import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search } from 'lucide-react';
+import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut } from 'lucide-react';
 import { assetApi } from '@/api/assets';
 import { AssetSearchResult } from '@/types';
 
@@ -82,8 +82,9 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 
 export function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const activeSection = (searchParams.get('section') as Section) || 'profile';
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
 
   // Profile state
@@ -269,6 +270,11 @@ export function Settings() {
     setMessage(null);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Sidebar Navigation */}
@@ -290,6 +296,14 @@ export function Settings() {
                   {item.label}
                 </button>
               ))}
+              <div className="border-t my-2" />
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors hover:bg-muted text-red-600"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
             </nav>
           </CardContent>
         </Card>

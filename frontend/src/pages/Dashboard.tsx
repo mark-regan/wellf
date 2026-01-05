@@ -7,26 +7,21 @@ import { useAuthStore } from '@/store/auth';
 import { NetWorthSummary, AssetAllocation, TopMover } from '@/types';
 import { formatCurrency, formatPercentage, getChangeColor } from '@/utils/format';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import {
   TrendingUp,
   TrendingDown,
   Briefcase,
   Wallet,
   Building2,
   ArrowRight,
-  PieChartIcon,
-  List,
   Target,
 } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+
+// Format portfolio type for display
+const formatPortfolioType = (type: string): string => {
+  return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
 
 export function Dashboard() {
   const { user } = useAuthStore();
@@ -34,7 +29,6 @@ export function Dashboard() {
   const [allocation, setAllocation] = useState<AssetAllocation | null>(null);
   const [movers, setMovers] = useState<{ gainers: TopMover[]; losers: TopMover[] }>({ gainers: [], losers: [] });
   const [loading, setLoading] = useState(true);
-  const [allocationView, setAllocationView] = useState<'chart' | 'list'>('chart');
 
   useEffect(() => {
     async function loadData() {
@@ -203,7 +197,7 @@ export function Dashboard() {
                         {portfolio.name}
                       </Link>
                       <div className="text-sm text-muted-foreground">
-                        {portfolio.type} • {portfolio.holdings_count} holdings
+                        {formatPortfolioType(portfolio.type)} • {portfolio.holdings_count} holdings
                       </div>
                     </div>
                     <div className="text-right">
@@ -221,56 +215,16 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Allocation Chart */}
+        {/* Allocation List */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>Asset Allocation</CardTitle>
-            <div className="flex gap-1">
-              <Button
-                variant={allocationView === 'chart' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setAllocationView('chart')}
-              >
-                <PieChartIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={allocationView === 'list' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setAllocationView('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
           </CardHeader>
           <CardContent>
             {!allocation?.by_type || allocation.by_type.length === 0 ? (
               <p className="text-muted-foreground text-sm">No allocation data</p>
-            ) : allocationView === 'chart' ? (
-              <div className="h-[250px] flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={allocation.by_type}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
-                    >
-                      {allocation.by_type.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value, summary?.currency)} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {allocation.by_type.map((item, index) => (
                   <div key={item.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -278,18 +232,21 @@ export function Dashboard() {
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: COLORS[index % COLORS.length] }}
                       />
-                      <span className="font-medium">{item.name}</span>
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatCurrency(item.value, summary?.currency)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        {formatCurrency(item.value, summary?.currency)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {item.percentage.toFixed(1)}%
-                      </div>
+                    <div className="text-2xl font-bold">
+                      {item.percentage.toFixed(1)}%
                     </div>
                   </div>
                 ))}
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  Note: Due to rounding, percentages may not add up to exactly 100%
+                </p>
               </div>
             )}
           </CardContent>

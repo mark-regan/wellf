@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import {
   TrendingUp,
   Settings,
   DollarSign,
+  ChevronDown,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -29,11 +31,30 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close menu on route change
+  useEffect(() => {
+    setShowUserMenu(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,19 +84,36 @@ export function Layout({ children }: LayoutProps) {
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+
+          {/* User Menu */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors"
+            >
               <User className="h-4 w-4" />
               <span>{user?.display_name || user?.email}</span>
-            </div>
-            <Link to="/settings">
-              <Button variant="ghost" size="icon" title="Settings">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md border bg-background shadow-lg py-1 z-50">
+                <Link
+                  to="/settings"
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors w-full text-left text-red-600"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

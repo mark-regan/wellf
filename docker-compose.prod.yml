@@ -1,0 +1,105 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: wellf-api
+    restart: always
+    expose:
+      - "4020"
+    ports: []  # Remove external port binding
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-wellf}:${DB_PASSWORD}@db:5432/${DB_NAME:-wellf}?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
+      - YAHOO_CACHE_TTL=${YAHOO_CACHE_TTL:-10m}
+      - BASE_CURRENCY=${BASE_CURRENCY:-GBP}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4020/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - wellf-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+    container_name: wellf-frontend
+    restart: always
+    expose:
+      - "80"
+    ports: []  # Remove external port binding
+    depends_on:
+      - api
+    networks:
+      - wellf-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: wellf-db
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER:-wellf}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:-wellf}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./api/migrations:/docker-entrypoint-initdb.d:ro
+    ports: []  # No external access
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-wellf}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wellf-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: wellf-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports: []  # No external access
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wellf-network
+
+  # Cloudflare Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: wellf-tunnel
+    restart: always
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+      - api
+    networks:
+      - wellf-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  wellf-network:
+    driver: bridge
