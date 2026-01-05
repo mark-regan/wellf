@@ -40,7 +40,7 @@ export function formatDateTime(date: string | Date): string {
 }
 
 export function getChangeColor(value: number): string {
-  if (value > 0) return 'text-green-600';
-  if (value < 0) return 'text-red-600';
-  return 'text-gray-600';
+  if (value > 0) return 'text-green-600 dark:text-green-500';
+  if (value < 0) return 'text-red-600 dark:text-red-500';
+  return 'text-muted-foreground';
 }

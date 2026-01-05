@@ -20,16 +20,18 @@ var (
 )
 
 type AuthService struct {
-	userRepo   *repository.UserRepository
-	jwtManager *jwt.Manager
-	validator  *validator.Validator
+	userRepo      *repository.UserRepository
+	portfolioRepo *repository.PortfolioRepository
+	jwtManager    *jwt.Manager
+	validator     *validator.Validator
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtManager *jwt.Manager, v *validator.Validator) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, portfolioRepo *repository.PortfolioRepository, jwtManager *jwt.Manager, v *validator.Validator) *AuthService {
 	return &AuthService{
-		userRepo:   userRepo,
-		jwtManager: jwtManager,
-		validator:  v,
+		userRepo:      userRepo,
+		portfolioRepo: portfolioRepo,
+		jwtManager:    jwtManager,
+		validator:     v,
 	}
 }
 
@@ -99,7 +101,42 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*mode
 		return nil, err
 	}
 
+	// Auto-create Fixed Assets portfolio for the new user
+	_ = s.ensureFixedAssetsPortfolio(ctx, user.ID, req.BaseCurrency)
+
 	return user, nil
+}
+
+// ensureFixedAssetsPortfolio creates the fixed assets portfolio if it doesn't exist
+func (s *AuthService) ensureFixedAssetsPortfolio(ctx context.Context, userID uuid.UUID, currency string) error {
+	// Check if fixed assets portfolio already exists
+	portfolios, err := s.portfolioRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range portfolios {
+		if p.Type == models.PortfolioTypeFixedAssets {
+			return nil // Already exists
+		}
+	}
+
+	// Create the fixed assets portfolio
+	portfolio := &models.Portfolio{
+		UserID:      userID,
+		Name:        "Fixed Assets",
+		Type:        models.PortfolioTypeFixedAssets,
+		Currency:    currency,
+		Description: "Non-tradeable assets like property, vehicles, and collectibles",
+		IsActive:    true,
+	}
+
+	return s.portfolioRepo.Create(ctx, portfolio)
+}
+
+// EnsureFixedAssetsPortfolio is the public method to ensure the portfolio exists (for existing users)
+func (s *AuthService) EnsureFixedAssetsPortfolio(ctx context.Context, userID uuid.UUID, currency string) error {
+	return s.ensureFixedAssetsPortfolio(ctx, userID, currency)
 }
 
 func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthTokens, *models.User, error) {
@@ -117,6 +154,9 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthTokens
 
 	// Update last login
 	_ = s.userRepo.UpdateLastLogin(ctx, user.ID)
+
+	// Ensure fixed assets portfolio exists for existing users
+	_ = s.ensureFixedAssetsPortfolio(ctx, user.ID, user.BaseCurrency)
 
 	tokens, err := s.generateTokens(user)
 	if err != nil {

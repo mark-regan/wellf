@@ -44,6 +44,14 @@ export const authApi = {
     locale?: string;
     fire_target?: number;
     fire_enabled?: boolean;
+    theme?: string;
+    phone_number?: string;
+    date_of_birth?: string | null;
+    notify_email?: boolean;
+    notify_price_alerts?: boolean;
+    notify_weekly?: boolean;
+    notify_monthly?: boolean;
+    watchlist?: string;
   }): Promise<User> => {
     const response = await api.put<User>('/auth/me', data);
     return response.data;

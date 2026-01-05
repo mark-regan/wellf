@@ -5,6 +5,14 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: [
+    'text-green-600',
+    'text-green-500',
+    'text-red-600',
+    'text-red-500',
+    'dark:text-green-500',
+    'dark:text-red-500',
+  ],
   theme: {
     container: {
       center: true,

@@ -85,14 +85,15 @@ func (s *YahooService) Search(ctx context.Context, term string) ([]AssetSearchRe
 }
 
 type AssetDetails struct {
-	Symbol    string  `json:"symbol"`
-	Name      string  `json:"name"`
-	Exchange  string  `json:"exchange"`
-	Currency  string  `json:"currency"`
-	QuoteType string  `json:"quote_type"`
-	Price     float64 `json:"price"`
-	Change    float64 `json:"change"`
-	ChangePct float64 `json:"change_pct"`
+	Symbol     string `json:"symbol"`
+	Name       string `json:"name"`
+	Exchange   string `json:"exchange"`
+	Currency   string `json:"currency"`
+	QuoteType  string `json:"quote_type"`
+	Price      float64 `json:"price"`
+	Change     float64 `json:"change"`
+	ChangePct  float64 `json:"change_pct"`
+	MarketTime int64   `json:"market_time"`
 }
 
 func (s *YahooService) GetAssetDetails(ctx context.Context, symbol string) (*AssetDetails, error) {
@@ -124,14 +125,15 @@ func (s *YahooService) GetAssetDetails(ctx context.Context, symbol string) (*Ass
 	}
 
 	details := &AssetDetails{
-		Symbol:    q.Symbol,
-		Name:      name,
-		Exchange:  q.Exchange,
-		Currency:  q.Currency,
-		QuoteType: q.QuoteType,
-		Price:     q.RegularMarketPrice,
-		Change:    q.RegularMarketChange,
-		ChangePct: q.RegularMarketChangePercent,
+		Symbol:     q.Symbol,
+		Name:       name,
+		Exchange:   q.Exchange,
+		Currency:   q.Currency,
+		QuoteType:  q.QuoteType,
+		Price:      q.RegularMarketPrice,
+		Change:     q.RegularMarketChange,
+		ChangePct:  q.RegularMarketChangePercent,
+		MarketTime: q.RegularMarketTime,
 	}
 
 	// Cache result
@@ -199,6 +201,58 @@ func (s *YahooService) RefreshPrices(ctx context.Context, symbols []string) erro
 
 	// Update all prices in database
 	return s.assetRepo.UpdatePrices(ctx, prices)
+}
+
+// GetQuotes returns detailed quote information for multiple symbols
+func (s *YahooService) GetQuotes(ctx context.Context, symbols []string) ([]AssetDetails, error) {
+	if len(symbols) == 0 {
+		return []AssetDetails{}, nil
+	}
+
+	quotes, err := s.client.GetQuotes(ctx, symbols)
+	if err != nil {
+		s.logger.Error("yahoo quotes failed", "error", err, "symbols", symbols)
+		return nil, err
+	}
+
+	results := make([]AssetDetails, 0, len(quotes))
+	for _, q := range quotes {
+		name := q.LongName
+		if name == "" {
+			name = q.ShortName
+		}
+
+		results = append(results, AssetDetails{
+			Symbol:     q.Symbol,
+			Name:       name,
+			Exchange:   q.Exchange,
+			Currency:   q.Currency,
+			QuoteType:  q.QuoteType,
+			Price:      q.RegularMarketPrice,
+			Change:     q.RegularMarketChange,
+			ChangePct:  q.RegularMarketChangePercent,
+			MarketTime: q.RegularMarketTime,
+		})
+
+		// Cache individual quote
+		cacheKey := fmt.Sprintf("yahoo:quote:%s", q.Symbol)
+		details := AssetDetails{
+			Symbol:     q.Symbol,
+			Name:       name,
+			Exchange:   q.Exchange,
+			Currency:   q.Currency,
+			QuoteType:  q.QuoteType,
+			Price:      q.RegularMarketPrice,
+			Change:     q.RegularMarketChange,
+			ChangePct:  q.RegularMarketChangePercent,
+			MarketTime: q.RegularMarketTime,
+		}
+		if data, err := json.Marshal(details); err == nil {
+			_ = s.redis.Set(ctx, cacheKey, string(data), s.cacheTTL)
+		}
+	}
+
+	return results, nil
 }
 
 type PriceHistory struct {

@@ -102,6 +102,8 @@ const getPortfolioTypeStyle = (type: string, metadata?: PortfolioMetadata) => {
       return { icon: PiggyBank, color: 'bg-emerald-100 text-emerald-600', label: 'Savings' };
     case 'CASH':
       return { icon: Wallet, color: 'bg-slate-100 text-slate-600', label: 'Cash' };
+    case 'FIXED_ASSETS':
+      return { icon: Home, color: 'bg-stone-100 text-stone-600', label: 'Fixed Assets' };
     default:
       return { icon: Briefcase, color: 'bg-gray-100 text-gray-600', label: type };
   }
@@ -1193,35 +1195,40 @@ export function Portfolios() {
                     </div>
                   )}
                   <div className="mt-4 pt-3 border-t flex items-center justify-between">
-                    <Link to={`/portfolios/${portfolio.id}`} className="flex items-center text-sm text-primary hover:underline font-medium">
-                      View details <ArrowRight className="ml-1 h-4 w-4" />
+                    <Link
+                      to={portfolio.type === 'FIXED_ASSETS' ? '/fixed-assets' : `/portfolios/${portfolio.id}`}
+                      className="flex items-center text-sm text-primary hover:underline font-medium"
+                    >
+                      {portfolio.type === 'FIXED_ASSETS' ? 'Manage assets' : 'View details'} <ArrowRight className="ml-1 h-4 w-4" />
                     </Link>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          startEdit(portfolio);
-                        }}
-                        className="h-8 w-8 p-0"
-                        title="Edit portfolio"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setDeletingPortfolio(portfolio);
-                        }}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        title="Delete portfolio"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {portfolio.type !== 'FIXED_ASSETS' && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            startEdit(portfolio);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Edit portfolio"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setDeletingPortfolio(portfolio);
+                          }}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Delete portfolio"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

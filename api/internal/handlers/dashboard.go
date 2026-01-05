@@ -125,7 +125,22 @@ func (h *DashboardHandler) Allocation(w http.ResponseWriter, r *http.Request) {
 
 	var totalValue float64
 
+	var cashTotal float64
+
 	for _, p := range portfolios {
+		// For CASH/SAVINGS portfolios, get balance from transactions
+		if p.Type == models.PortfolioTypeCash || p.Type == models.PortfolioTypeSavings {
+			summary, err := h.portfolioRepo.GetSummary(r.Context(), p.ID)
+			if err == nil && summary.TotalValue > 0 {
+				cashTotal += summary.TotalValue
+				totalValue += summary.TotalValue
+				byPortfolio[p.Name] = summary.TotalValue
+				byCurrency[p.Currency] += summary.TotalValue
+			}
+			continue
+		}
+
+		// For investment portfolios, get holdings
 		holdings, err := h.holdingRepo.GetByPortfolioID(r.Context(), p.ID)
 		if err != nil {
 			continue
@@ -147,11 +162,16 @@ func (h *DashboardHandler) Allocation(w http.ResponseWriter, r *http.Request) {
 		byPortfolio[p.Name] = portfolioValue
 	}
 
-	// Add cash
-	cashTotal, _ := h.cashRepo.GetTotalByUserID(r.Context(), userID)
+	// Add cash from cash_accounts (within investment portfolios)
+	cashFromAccounts, _ := h.cashRepo.GetTotalByUserID(r.Context(), userID)
+	if cashFromAccounts > 0 {
+		cashTotal += cashFromAccounts
+		totalValue += cashFromAccounts
+	}
+
+	// Add total cash to byType
 	if cashTotal > 0 {
-		byType["CASH"] += cashTotal
-		totalValue += cashTotal
+		byType["CASH"] = cashTotal
 	}
 
 	// Add fixed assets

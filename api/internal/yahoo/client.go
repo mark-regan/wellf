@@ -172,10 +172,14 @@ type ChartResult struct {
 type ChartMeta struct {
 	Currency           string  `json:"currency"`
 	Symbol             string  `json:"symbol"`
+	ShortName          string  `json:"shortName"`
+	LongName           string  `json:"longName"`
 	ExchangeName       string  `json:"exchangeName"`
 	InstrumentType     string  `json:"instrumentType"`
 	RegularMarketPrice float64 `json:"regularMarketPrice"`
+	RegularMarketTime  int64   `json:"regularMarketTime"`
 	PreviousClose      float64 `json:"previousClose"`
+	ChartPreviousClose float64 `json:"chartPreviousClose"`
 }
 
 type ChartIndicators struct {
@@ -264,23 +268,40 @@ func (c *Client) GetQuote(ctx context.Context, symbol string) (*QuoteResponse, e
 
 	meta := chart.Chart.Result[0].Meta
 
+	// Use name from meta, fallback to symbol
+	shortName := meta.ShortName
+	if shortName == "" {
+		shortName = meta.Symbol
+	}
+	longName := meta.LongName
+	if longName == "" {
+		longName = shortName
+	}
+
+	// Use previousClose or chartPreviousClose for change calculation
+	previousClose := meta.PreviousClose
+	if previousClose == 0 {
+		previousClose = meta.ChartPreviousClose
+	}
+
 	// Build a QuoteResponse from chart data
 	result := &QuoteResponse{}
 	result.QuoteResponse.Result = []QuoteResult{{
-		Symbol:             meta.Symbol,
-		ShortName:          meta.Symbol,
-		LongName:           meta.Symbol,
-		Currency:           meta.Currency,
-		Exchange:           meta.ExchangeName,
-		QuoteType:          meta.InstrumentType,
-		RegularMarketPrice: meta.RegularMarketPrice,
-		RegularMarketPreviousClose: meta.PreviousClose,
+		Symbol:                     meta.Symbol,
+		ShortName:                  shortName,
+		LongName:                   longName,
+		Currency:                   meta.Currency,
+		Exchange:                   meta.ExchangeName,
+		QuoteType:                  meta.InstrumentType,
+		RegularMarketPrice:         meta.RegularMarketPrice,
+		RegularMarketTime:          meta.RegularMarketTime,
+		RegularMarketPreviousClose: previousClose,
 	}}
 
 	// Calculate change
-	if meta.PreviousClose > 0 {
-		change := meta.RegularMarketPrice - meta.PreviousClose
-		changePct := (change / meta.PreviousClose) * 100
+	if previousClose > 0 {
+		change := meta.RegularMarketPrice - previousClose
+		changePct := (change / previousClose) * 100
 		result.QuoteResponse.Result[0].RegularMarketChange = change
 		result.QuoteResponse.Result[0].RegularMarketChangePercent = changePct
 	}
@@ -303,6 +324,7 @@ type QuoteResult struct {
 	Exchange                   string  `json:"exchange"`
 	QuoteType                  string  `json:"quoteType"`
 	RegularMarketPrice         float64 `json:"regularMarketPrice"`
+	RegularMarketTime          int64   `json:"regularMarketTime"`
 	RegularMarketChange        float64 `json:"regularMarketChange"`
 	RegularMarketChangePercent float64 `json:"regularMarketChangePercent"`
 	RegularMarketPreviousClose float64 `json:"regularMarketPreviousClose"`

@@ -81,6 +81,7 @@ func IsValidCurrency(currency string) bool {
 var validPortfolioTypes = map[string]bool{
 	"GIA": true, "ISA": true, "SIPP": true, "LISA": true,
 	"JISA": true, "CRYPTO": true, "SAVINGS": true, "CASH": true,
+	"FIXED_ASSETS": true,
 }
 
 func IsValidPortfolioType(portfolioType string) bool {

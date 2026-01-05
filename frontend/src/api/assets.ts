@@ -1,5 +1,5 @@
 import api from './client';
-import { AssetSearchResult, AssetDetails, PriceHistory, FixedAsset } from '@/types';
+import { AssetSearchResult, AssetDetails, PriceHistory, FixedAsset, QuoteData } from '@/types';
 
 interface CreateFixedAssetRequest {
   name: string;
@@ -44,6 +44,11 @@ export const assetApi = {
 
   refreshPrices: async (): Promise<{ message: string; count: number }> => {
     const response = await api.post<{ message: string; count: number }>('/assets/refresh');
+    return response.data;
+  },
+
+  getQuotes: async (symbols: string[]): Promise<QuoteData[]> => {
+    const response = await api.get<QuoteData[]>(`/assets/quotes?symbols=${symbols.join(',')}`);
     return response.data;
   },
 };

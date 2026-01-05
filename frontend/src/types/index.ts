@@ -1,3 +1,5 @@
+export type Theme = 'light' | 'dark' | 'system';
+
 export interface User {
   id: string;
   email: string;
@@ -7,8 +9,28 @@ export interface User {
   locale: string;
   fire_target?: number;
   fire_enabled?: boolean;
+  theme: Theme;
+  phone_number?: string;
+  date_of_birth?: string;
+  notify_email: boolean;
+  notify_price_alerts: boolean;
+  notify_weekly: boolean;
+  notify_monthly: boolean;
+  watchlist?: string;
   created_at: string;
   last_login_at?: string;
+}
+
+export interface QuoteData {
+  symbol: string;
+  name: string;
+  exchange: string;
+  currency: string;
+  quote_type: string;
+  price: number;
+  change: number;
+  change_pct: number;
+  market_time: number;
 }
 
 export interface AuthTokens {
@@ -19,7 +41,7 @@ export interface AuthTokens {
 }
 
 // Portfolio types and metadata
-export type PortfolioType = 'GIA' | 'ISA' | 'SIPP' | 'LISA' | 'JISA' | 'CRYPTO' | 'SAVINGS' | 'CASH';
+export type PortfolioType = 'GIA' | 'ISA' | 'SIPP' | 'LISA' | 'JISA' | 'CRYPTO' | 'SAVINGS' | 'CASH' | 'FIXED_ASSETS';
 export type ISAType = 'STOCKS_AND_SHARES' | 'CASH';
 export type SavingsType = 'EASY_ACCESS' | 'NOTICE' | 'FIXED_TERM' | 'REGULAR_SAVER';
 export type CryptoWalletType = 'EXCHANGE' | 'HARDWARE' | 'SOFTWARE';

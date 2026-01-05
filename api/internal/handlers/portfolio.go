@@ -104,6 +104,12 @@ func (h *PortfolioHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Prevent manual creation of FIXED_ASSETS portfolio (auto-created for users)
+	if req.Type == models.PortfolioTypeFixedAssets {
+		Error(w, http.StatusBadRequest, "Fixed Assets portfolio is created automatically")
+		return
+	}
+
 	if req.Currency == "" {
 		req.Currency = "GBP"
 	}
@@ -260,13 +266,25 @@ func (h *PortfolioHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	belongs, err := h.portfolioRepo.BelongsToUser(r.Context(), portfolioID, userID)
+	// Get the portfolio to check its type
+	portfolio, err := h.portfolioRepo.GetByID(r.Context(), portfolioID)
 	if err != nil {
-		Error(w, http.StatusInternalServerError, "Failed to verify ownership")
+		if errors.Is(err, repository.ErrPortfolioNotFound) {
+			Error(w, http.StatusNotFound, "Portfolio not found")
+			return
+		}
+		Error(w, http.StatusInternalServerError, "Failed to fetch portfolio")
 		return
 	}
-	if !belongs {
+
+	if portfolio.UserID != userID {
 		Error(w, http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Prevent deletion of FIXED_ASSETS portfolio
+	if portfolio.Type == models.PortfolioTypeFixedAssets {
+		Error(w, http.StatusForbidden, "Fixed Assets portfolio cannot be deleted")
 		return
 	}
 

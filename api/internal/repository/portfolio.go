@@ -223,6 +223,47 @@ func (r *PortfolioRepository) GetSummary(ctx context.Context, portfolioID uuid.U
 		return nil, err
 	}
 
+	// For FIXED_ASSETS portfolios, calculate from fixed_assets table
+	if portfolio.Type == models.PortfolioTypeFixedAssets {
+		query := `
+			SELECT
+				p.id,
+				p.name,
+				p.type,
+				COALESCE(SUM(fa.current_value), 0) as total_value,
+				COALESCE(SUM(COALESCE(fa.purchase_price, 0)), 0) as total_cost,
+				COUNT(fa.id) as holdings_count
+			FROM portfolios p
+			LEFT JOIN fixed_assets fa ON fa.user_id = p.user_id
+			WHERE p.id = $1
+			GROUP BY p.id, p.name, p.type
+		`
+
+		var summary models.PortfolioSummary
+		err := r.pool.QueryRow(ctx, query, portfolioID).Scan(
+			&summary.ID,
+			&summary.Name,
+			&summary.Type,
+			&summary.TotalValue,
+			&summary.TotalCost,
+			&summary.HoldingsCount,
+		)
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, ErrPortfolioNotFound
+			}
+			return nil, err
+		}
+
+		summary.UnrealisedGain = summary.TotalValue - summary.TotalCost
+		if summary.TotalCost > 0 {
+			summary.UnrealisedPct = (summary.UnrealisedGain / summary.TotalCost) * 100
+		}
+
+		return &summary, nil
+	}
+
 	// For CASH and SAVINGS portfolios, calculate balance from DEPOSIT/WITHDRAWAL transactions
 	if portfolio.Type == models.PortfolioTypeCash || portfolio.Type == models.PortfolioTypeSavings {
 		query := `

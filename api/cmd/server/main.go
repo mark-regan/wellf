@@ -75,7 +75,7 @@ func main() {
 	yahooService := services.NewYahooService(yahooClient, assetRepo, redis, cfg.Yahoo.CacheTTL, logger)
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, jwtManager, v)
+	authService := services.NewAuthService(userRepo, portfolioRepo, jwtManager, v)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -143,6 +143,7 @@ func main() {
 			r.Post("/portfolios/{id}/holdings", holdingHandler.Create)
 			r.Get("/portfolios/{id}/transactions", txHandler.List)
 			r.Post("/portfolios/{id}/transactions", txHandler.Create)
+			r.Post("/portfolios/{id}/transactions/import", txHandler.Import)
 			r.Get("/portfolios/{id}/cash-accounts", cashHandler.List)
 			r.Post("/portfolios/{id}/cash-accounts", cashHandler.Create)
 
@@ -163,6 +164,7 @@ func main() {
 
 			// Assets
 			r.Get("/assets/search", assetHandler.Search)
+			r.Get("/assets/quotes", assetHandler.GetQuotes)
 			r.Get("/assets/{symbol}", assetHandler.GetDetails)
 			r.Get("/assets/{symbol}/history", assetHandler.GetHistory)
 			r.Post("/assets/refresh", assetHandler.RefreshPrices)

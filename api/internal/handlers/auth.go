@@ -4,10 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/mark-regan/wellf/internal/middleware"
 	"github.com/mark-regan/wellf/internal/services"
 )
+
+// parseDate parses a date string in YYYY-MM-DD format
+func parseDate(s string) (time.Time, error) {
+	return time.Parse("2006-01-02", s)
+}
 
 type AuthHandler struct {
 	authService *services.AuthService
@@ -113,16 +119,24 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, map[string]interface{}{
-		"id":            user.ID,
-		"email":         user.Email,
-		"display_name":  user.DisplayName,
-		"base_currency": user.BaseCurrency,
-		"date_format":   user.DateFormat,
-		"locale":        user.Locale,
-		"fire_target":   user.FireTarget,
-		"fire_enabled":  user.FireEnabled,
-		"created_at":    user.CreatedAt,
-		"last_login_at": user.LastLoginAt,
+		"id":                  user.ID,
+		"email":               user.Email,
+		"display_name":        user.DisplayName,
+		"base_currency":       user.BaseCurrency,
+		"date_format":         user.DateFormat,
+		"locale":              user.Locale,
+		"fire_target":         user.FireTarget,
+		"fire_enabled":        user.FireEnabled,
+		"theme":               user.Theme,
+		"phone_number":        user.PhoneNumber,
+		"date_of_birth":       user.DateOfBirth,
+		"notify_email":        user.NotifyEmail,
+		"notify_price_alerts": user.NotifyPriceAlerts,
+		"notify_weekly":       user.NotifyWeekly,
+		"notify_monthly":      user.NotifyMonthly,
+		"watchlist":           user.Watchlist,
+		"created_at":          user.CreatedAt,
+		"last_login_at":       user.LastLoginAt,
 	})
 }
 
@@ -134,12 +148,20 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		DisplayName  string   `json:"display_name"`
-		BaseCurrency string   `json:"base_currency"`
-		DateFormat   string   `json:"date_format"`
-		Locale       string   `json:"locale"`
-		FireTarget   *float64 `json:"fire_target"`
-		FireEnabled  *bool    `json:"fire_enabled"`
+		DisplayName       string   `json:"display_name"`
+		BaseCurrency      string   `json:"base_currency"`
+		DateFormat        string   `json:"date_format"`
+		Locale            string   `json:"locale"`
+		FireTarget        *float64 `json:"fire_target"`
+		FireEnabled       *bool    `json:"fire_enabled"`
+		Theme             string   `json:"theme"`
+		PhoneNumber       string   `json:"phone_number"`
+		DateOfBirth       *string  `json:"date_of_birth"`
+		NotifyEmail       *bool    `json:"notify_email"`
+		NotifyPriceAlerts *bool    `json:"notify_price_alerts"`
+		NotifyWeekly      *bool    `json:"notify_weekly"`
+		NotifyMonthly     *bool    `json:"notify_monthly"`
+		Watchlist         *string  `json:"watchlist"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		Error(w, http.StatusBadRequest, "Invalid request body")
@@ -170,6 +192,36 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	if req.FireEnabled != nil {
 		user.FireEnabled = *req.FireEnabled
 	}
+	if req.Theme != "" {
+		user.Theme = req.Theme
+	}
+	// Phone number can be cleared by sending empty string explicitly
+	user.PhoneNumber = req.PhoneNumber
+	if req.DateOfBirth != nil {
+		if *req.DateOfBirth == "" {
+			user.DateOfBirth = nil
+		} else {
+			dob, err := parseDate(*req.DateOfBirth)
+			if err == nil {
+				user.DateOfBirth = &dob
+			}
+		}
+	}
+	if req.NotifyEmail != nil {
+		user.NotifyEmail = *req.NotifyEmail
+	}
+	if req.NotifyPriceAlerts != nil {
+		user.NotifyPriceAlerts = *req.NotifyPriceAlerts
+	}
+	if req.NotifyWeekly != nil {
+		user.NotifyWeekly = *req.NotifyWeekly
+	}
+	if req.NotifyMonthly != nil {
+		user.NotifyMonthly = *req.NotifyMonthly
+	}
+	if req.Watchlist != nil {
+		user.Watchlist = *req.Watchlist
+	}
 
 	if err := h.authService.UpdateUser(r.Context(), user); err != nil {
 		Error(w, http.StatusInternalServerError, "Failed to update user")
@@ -177,14 +229,22 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, map[string]interface{}{
-		"id":            user.ID,
-		"email":         user.Email,
-		"display_name":  user.DisplayName,
-		"base_currency": user.BaseCurrency,
-		"date_format":   user.DateFormat,
-		"locale":        user.Locale,
-		"fire_target":   user.FireTarget,
-		"fire_enabled":  user.FireEnabled,
+		"id":                  user.ID,
+		"email":               user.Email,
+		"display_name":        user.DisplayName,
+		"base_currency":       user.BaseCurrency,
+		"date_format":         user.DateFormat,
+		"locale":              user.Locale,
+		"fire_target":         user.FireTarget,
+		"fire_enabled":        user.FireEnabled,
+		"theme":               user.Theme,
+		"phone_number":        user.PhoneNumber,
+		"date_of_birth":       user.DateOfBirth,
+		"notify_email":        user.NotifyEmail,
+		"notify_price_alerts": user.NotifyPriceAlerts,
+		"notify_weekly":       user.NotifyWeekly,
+		"notify_monthly":      user.NotifyMonthly,
+		"watchlist":           user.Watchlist,
 	})
 }
 

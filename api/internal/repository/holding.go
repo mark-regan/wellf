@@ -226,6 +226,13 @@ func (r *HoldingRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// DeleteByPortfolioID deletes all holdings for a portfolio
+func (r *HoldingRepository) DeleteByPortfolioID(ctx context.Context, portfolioID uuid.UUID) error {
+	query := `DELETE FROM holdings WHERE portfolio_id = $1`
+	_, err := r.pool.Exec(ctx, query, portfolioID)
+	return err
+}
+
 func (r *HoldingRepository) AddToHolding(ctx context.Context, portfolioID, assetID uuid.UUID, quantity, price float64, purchasedAt *time.Time) error {
 	// Try to get existing holding
 	existing, err := r.GetByPortfolioAndAsset(ctx, portfolioID, assetID)

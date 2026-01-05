@@ -12,7 +12,22 @@ interface AuthState {
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User) => void;
-  updateUser: (data: { display_name?: string; base_currency?: string; date_format?: string; locale?: string }) => Promise<void>;
+  updateUser: (data: {
+    display_name?: string;
+    base_currency?: string;
+    date_format?: string;
+    locale?: string;
+    fire_target?: number;
+    fire_enabled?: boolean;
+    theme?: string;
+    phone_number?: string;
+    date_of_birth?: string | null;
+    notify_email?: boolean;
+    notify_price_alerts?: boolean;
+    notify_weekly?: boolean;
+    notify_monthly?: boolean;
+    watchlist?: string;
+  }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(

@@ -36,6 +36,15 @@ interface CreateCashAccountRequest {
   interest_rate?: number;
 }
 
+interface ImportTransactionsResponse {
+  success: boolean;
+  imported?: number;
+  message: string;
+  error?: string;
+  invalid_symbols?: string[];
+  row_errors?: string[];
+}
+
 export const portfolioApi = {
   list: async (): Promise<Portfolio[]> => {
     const response = await api.get<Portfolio[]>('/portfolios');
@@ -106,6 +115,26 @@ export const portfolioApi = {
 
   deleteTransaction: async (transactionId: string): Promise<void> => {
     await api.delete(`/transactions/${transactionId}`);
+  },
+
+  importTransactions: async (
+    portfolioId: string,
+    file: File,
+    mode: 'replace' | 'append'
+  ): Promise<ImportTransactionsResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+    const response = await api.post<ImportTransactionsResponse>(
+      `/portfolios/${portfolioId}/transactions/import`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
   },
 
   // Cash Accounts

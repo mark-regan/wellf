@@ -17,21 +17,32 @@ type User struct {
 	Locale       string     `json:"locale"`
 	FireTarget   *float64   `json:"fire_target,omitempty"`
 	FireEnabled  bool       `json:"fire_enabled"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
+	// New preference fields
+	Theme             string     `json:"theme"`
+	PhoneNumber       string     `json:"phone_number,omitempty"`
+	DateOfBirth       *time.Time `json:"date_of_birth,omitempty"`
+	NotifyEmail       bool       `json:"notify_email"`
+	NotifyPriceAlerts bool       `json:"notify_price_alerts"`
+	NotifyWeekly      bool       `json:"notify_weekly"`
+	NotifyMonthly     bool       `json:"notify_monthly"`
+	Watchlist         string     `json:"watchlist,omitempty"`
+	// Timestamps
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
 }
 
 // Portfolio types
 const (
-	PortfolioTypeGIA     = "GIA"
-	PortfolioTypeISA     = "ISA"
-	PortfolioTypeSIPP    = "SIPP"
-	PortfolioTypeLISA    = "LISA"
-	PortfolioTypeJISA    = "JISA"
-	PortfolioTypeCrypto  = "CRYPTO"
-	PortfolioTypeSavings = "SAVINGS"
-	PortfolioTypeCash    = "CASH"
+	PortfolioTypeGIA         = "GIA"
+	PortfolioTypeISA         = "ISA"
+	PortfolioTypeSIPP        = "SIPP"
+	PortfolioTypeLISA        = "LISA"
+	PortfolioTypeJISA        = "JISA"
+	PortfolioTypeCrypto      = "CRYPTO"
+	PortfolioTypeSavings     = "SAVINGS"
+	PortfolioTypeCash        = "CASH"
+	PortfolioTypeFixedAssets = "FIXED_ASSETS"
 )
 
 // ISA sub-types

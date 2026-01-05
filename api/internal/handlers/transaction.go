@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -332,4 +336,348 @@ func (h *TransactionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	NoContent(w)
+}
+
+type csvRow struct {
+	TransactionDate string
+	Symbol          string
+	TransactionType string
+	Quantity        float64
+	Price           float64
+	Currency        string
+	Notes           string
+}
+
+type ImportResponse struct {
+	Success        bool     `json:"success"`
+	Imported       int      `json:"imported,omitempty"`
+	Message        string   `json:"message"`
+	Error          string   `json:"error,omitempty"`
+	InvalidSymbols []string `json:"invalid_symbols,omitempty"`
+	RowErrors      []string `json:"row_errors,omitempty"`
+}
+
+func (h *TransactionHandler) Import(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	portfolioID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		Error(w, http.StatusBadRequest, "Invalid portfolio ID")
+		return
+	}
+
+	belongs, err := h.portfolioRepo.BelongsToUser(r.Context(), portfolioID, userID)
+	if err != nil {
+		Error(w, http.StatusInternalServerError, "Failed to verify ownership")
+		return
+	}
+	if !belongs {
+		Error(w, http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Get portfolio to check its default currency
+	portfolio, err := h.portfolioRepo.GetByID(r.Context(), portfolioID)
+	if err != nil {
+		Error(w, http.StatusInternalServerError, "Failed to fetch portfolio")
+		return
+	}
+
+	// Parse multipart form (max 10MB)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		Error(w, http.StatusBadRequest, "Failed to parse form data")
+		return
+	}
+
+	// Get the mode (replace or append)
+	mode := r.FormValue("mode")
+	if mode != "replace" && mode != "append" {
+		mode = "append"
+	}
+
+	// Get the file
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		Error(w, http.StatusBadRequest, "No file uploaded")
+		return
+	}
+	defer file.Close()
+
+	// Parse CSV
+	reader := csv.NewReader(file)
+
+	// Read header
+	header, err := reader.Read()
+	if err != nil {
+		JSON(w, http.StatusBadRequest, ImportResponse{
+			Success: false,
+			Error:   "Failed to read CSV header",
+			Message: "The CSV file appears to be empty or malformed",
+		})
+		return
+	}
+
+	// Map header columns
+	colIndex := make(map[string]int)
+	for i, col := range header {
+		colIndex[strings.ToLower(strings.TrimSpace(col))] = i
+	}
+
+	// Validate required columns
+	requiredCols := []string{"transaction_date", "symbol", "transaction_type", "quantity", "price"}
+	for _, col := range requiredCols {
+		if _, exists := colIndex[col]; !exists {
+			JSON(w, http.StatusBadRequest, ImportResponse{
+				Success: false,
+				Error:   "Missing required column: " + col,
+				Message: "Required columns: transaction_date, symbol, transaction_type, quantity, price",
+			})
+			return
+		}
+	}
+
+	// Parse all rows and collect errors
+	var rows []csvRow
+	var rowErrors []string
+	lineNum := 1
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			JSON(w, http.StatusBadRequest, ImportResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Error reading line %d: %v", lineNum+1, err),
+				Message: "CSV parsing error",
+			})
+			return
+		}
+		lineNum++
+
+		var lineErrors []string
+
+		// Parse row
+		row := csvRow{
+			TransactionDate: strings.TrimSpace(record[colIndex["transaction_date"]]),
+			Symbol:          strings.ToUpper(strings.TrimSpace(record[colIndex["symbol"]])),
+			TransactionType: strings.ToUpper(strings.TrimSpace(record[colIndex["transaction_type"]])),
+		}
+
+		// Validate date format and not in future
+		txDate, err := time.Parse("2006-01-02", row.TransactionDate)
+		if err != nil {
+			lineErrors = append(lineErrors, "invalid date format (use YYYY-MM-DD)")
+		} else if txDate.After(time.Now()) {
+			lineErrors = append(lineErrors, "transaction date cannot be in the future")
+		}
+
+		// Validate symbol is not empty
+		if row.Symbol == "" {
+			lineErrors = append(lineErrors, "symbol is required")
+		}
+
+		// Validate transaction type
+		if row.TransactionType != "BUY" && row.TransactionType != "SELL" {
+			lineErrors = append(lineErrors, fmt.Sprintf("invalid transaction type '%s' (use BUY or SELL)", row.TransactionType))
+		}
+
+		// Parse quantity
+		quantityStr := strings.TrimSpace(record[colIndex["quantity"]])
+		quantity, err := strconv.ParseFloat(quantityStr, 64)
+		if err != nil || quantity <= 0 {
+			lineErrors = append(lineErrors, "quantity must be a positive number")
+		} else {
+			row.Quantity = quantity
+		}
+
+		// Parse price
+		priceStr := strings.TrimSpace(record[colIndex["price"]])
+		price, err := strconv.ParseFloat(priceStr, 64)
+		if err != nil || price <= 0 {
+			lineErrors = append(lineErrors, "price must be a positive number")
+		} else {
+			row.Price = price
+		}
+
+		// If there are errors for this line, add them to rowErrors
+		if len(lineErrors) > 0 {
+			rowErrors = append(rowErrors, fmt.Sprintf("Line %d: %s", lineNum, strings.Join(lineErrors, "; ")))
+			continue
+		}
+
+		// Optional currency
+		if idx, exists := colIndex["currency"]; exists && idx < len(record) {
+			currency := strings.ToUpper(strings.TrimSpace(record[idx]))
+			if currency != "" {
+				row.Currency = currency
+			}
+		}
+		if row.Currency == "" {
+			row.Currency = portfolio.Currency
+		}
+
+		// Optional notes
+		if idx, exists := colIndex["notes"]; exists && idx < len(record) {
+			row.Notes = strings.TrimSpace(record[idx])
+		}
+
+		rows = append(rows, row)
+	}
+
+	// If there were row errors, return them all
+	if len(rowErrors) > 0 {
+		JSON(w, http.StatusBadRequest, ImportResponse{
+			Success:   false,
+			Error:     "Validation errors found",
+			Message:   fmt.Sprintf("Found %d row(s) with errors", len(rowErrors)),
+			RowErrors: rowErrors,
+		})
+		return
+	}
+
+	if len(rows) == 0 {
+		JSON(w, http.StatusBadRequest, ImportResponse{
+			Success: false,
+			Error:   "No transactions found",
+			Message: "The CSV file contains no valid transactions",
+		})
+		return
+	}
+
+	// Collect unique symbols
+	symbolSet := make(map[string]bool)
+	for _, row := range rows {
+		symbolSet[row.Symbol] = true
+	}
+
+	// Validate all symbols against Yahoo Finance
+	var invalidSymbols []string
+	symbolToAsset := make(map[string]*models.Asset)
+
+	for symbol := range symbolSet {
+		asset, err := h.yahooService.GetOrCreateAsset(r.Context(), symbol)
+		if err != nil {
+			invalidSymbols = append(invalidSymbols, symbol)
+		} else {
+			symbolToAsset[symbol] = asset
+		}
+	}
+
+	if len(invalidSymbols) > 0 {
+		sort.Strings(invalidSymbols)
+		JSON(w, http.StatusBadRequest, ImportResponse{
+			Success:        false,
+			Error:          "Invalid symbols found",
+			InvalidSymbols: invalidSymbols,
+			Message:        fmt.Sprintf("The following symbols could not be found: %s", strings.Join(invalidSymbols, ", ")),
+		})
+		return
+	}
+
+	// Sort rows by date for sell validation
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].TransactionDate < rows[j].TransactionDate
+	})
+
+	// Validate sell quantities - ensure we have enough holdings to sell
+	// Build initial holdings map based on mode
+	holdingsBalance := make(map[string]float64)
+
+	if mode == "append" {
+		// Get existing holdings for this portfolio
+		existingHoldings, err := h.holdingRepo.GetByPortfolioID(r.Context(), portfolioID)
+		if err != nil {
+			Error(w, http.StatusInternalServerError, "Failed to fetch existing holdings")
+			return
+		}
+		for _, h := range existingHoldings {
+			if h.Asset != nil {
+				holdingsBalance[h.Asset.Symbol] = h.Quantity
+			}
+		}
+	}
+	// For replace mode, holdingsBalance starts empty
+
+	// Simulate the transactions chronologically to check for insufficient holdings
+	var sellErrors []string
+	for i, row := range rows {
+		if row.TransactionType == "BUY" {
+			holdingsBalance[row.Symbol] += row.Quantity
+		} else if row.TransactionType == "SELL" {
+			if holdingsBalance[row.Symbol] < row.Quantity {
+				available := holdingsBalance[row.Symbol]
+				sellErrors = append(sellErrors, fmt.Sprintf("Line %d: Cannot sell %.4f %s (only %.4f available at this point)", i+2, row.Quantity, row.Symbol, available))
+			} else {
+				holdingsBalance[row.Symbol] -= row.Quantity
+			}
+		}
+	}
+
+	if len(sellErrors) > 0 {
+		JSON(w, http.StatusBadRequest, ImportResponse{
+			Success:   false,
+			Error:     "Insufficient holdings for sell orders",
+			Message:   fmt.Sprintf("Found %d sell order(s) that exceed available holdings", len(sellErrors)),
+			RowErrors: sellErrors,
+		})
+		return
+	}
+
+	// If replace mode, delete existing transactions and holdings
+	if mode == "replace" {
+		if err := h.txRepo.DeleteByPortfolioID(r.Context(), portfolioID); err != nil {
+			Error(w, http.StatusInternalServerError, "Failed to clear existing transactions")
+			return
+		}
+		if err := h.holdingRepo.DeleteByPortfolioID(r.Context(), portfolioID); err != nil {
+			Error(w, http.StatusInternalServerError, "Failed to clear existing holdings")
+			return
+		}
+	}
+
+	// Rows already sorted by date from sell validation above
+
+	// Process each row
+	imported := 0
+	for _, row := range rows {
+		txDate, _ := time.Parse("2006-01-02", row.TransactionDate)
+		asset := symbolToAsset[row.Symbol]
+
+		tx := &models.Transaction{
+			PortfolioID:     portfolioID,
+			AssetID:         &asset.ID,
+			TransactionType: row.TransactionType,
+			Quantity:        &row.Quantity,
+			Price:           &row.Price,
+			TotalAmount:     row.Quantity * row.Price,
+			Currency:        row.Currency,
+			TransactionDate: txDate,
+			Notes:           row.Notes,
+		}
+
+		if err := h.txRepo.Create(r.Context(), tx); err != nil {
+			// Continue with other transactions, but log the error
+			continue
+		}
+
+		// Update holdings
+		if row.TransactionType == models.TransactionTypeBuy {
+			h.holdingRepo.AddToHolding(r.Context(), portfolioID, asset.ID, row.Quantity, row.Price, &txDate)
+		} else {
+			h.holdingRepo.RemoveFromHolding(r.Context(), portfolioID, asset.ID, row.Quantity)
+		}
+
+		imported++
+	}
+
+	JSON(w, http.StatusOK, ImportResponse{
+		Success:  true,
+		Imported: imported,
+		Message:  fmt.Sprintf("Successfully imported %d transactions", imported),
+	})
 }

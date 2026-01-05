@@ -4,10 +4,12 @@ A personal wealth tracking application for monitoring investments, portfolios, a
 
 ## Features
 
-- **Portfolio Management**: Track multiple portfolio types including GIA, ISA, SIPP, LISA, JISA, Crypto, Savings, and Cash accounts
+- **Portfolio Management**: Track multiple portfolio types including GIA, ISA, SIPP, LISA, JISA, Crypto, Savings, Cash, and Fixed Assets
 - **Holdings Tracking**: Monitor all your investments with real-time price updates from Yahoo Finance
+- **Current Prices**: View market indices, your holdings, and custom watchlist with interactive charts in a modal popup
+- **Watchlist**: Customizable list of tickers to monitor (configurable in Settings)
 - **Cash Accounts**: Separate tracking for cash holdings across portfolios
-- **Fixed Assets**: Track non-tradeable assets like property and vehicles
+- **Fixed Assets**: Track non-tradeable assets like property and vehicles (auto-created portfolio per user)
 - **Performance Charts**: Visualize portfolio performance over time with customizable date ranges
 - **FIRE Tracking**: Set and monitor progress towards your Financial Independence / Retire Early goal
 - **Multi-Currency Support**: Handle investments in different currencies with automatic conversion
@@ -156,6 +158,7 @@ All API endpoints are prefixed with `/api/v1`.
 
 ### Assets
 - `GET /assets/search` - Search for assets
+- `GET /assets/quotes?symbols=X,Y,Z` - Get quotes for multiple symbols
 - `GET /assets/{symbol}` - Asset details
 - `GET /assets/{symbol}/history` - Price history
 - `POST /assets/refresh` - Refresh prices

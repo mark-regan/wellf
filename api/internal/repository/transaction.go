@@ -312,6 +312,13 @@ func (r *TransactionRepository) HasTransactions(ctx context.Context, portfolioID
 	return exists, err
 }
 
+// DeleteByPortfolioID deletes all transactions for a portfolio
+func (r *TransactionRepository) DeleteByPortfolioID(ctx context.Context, portfolioID uuid.UUID) error {
+	query := `DELETE FROM transactions WHERE portfolio_id = $1`
+	_, err := r.pool.Exec(ctx, query, portfolioID)
+	return err
+}
+
 // GetPortfoliosWithData returns a map of portfolio IDs to whether they have any data (holdings or transactions)
 func (r *TransactionRepository) GetPortfoliosWithData(ctx context.Context, portfolioIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
 	if len(portfolioIDs) == 0 {

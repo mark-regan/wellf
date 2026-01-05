@@ -6,11 +6,11 @@ import {
   Briefcase,
   PieChart,
   LineChart,
-  Building2,
   LogOut,
   User,
   TrendingUp,
   Settings,
+  DollarSign,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -22,7 +22,7 @@ const navItems = [
   { path: '/portfolios', label: 'Portfolios', icon: Briefcase },
   { path: '/holdings', label: 'Holdings', icon: PieChart },
   { path: '/charts', label: 'Charts', icon: LineChart },
-  { path: '/fixed-assets', label: 'Fixed Assets', icon: Building2 },
+  { path: '/prices', label: 'Prices', icon: DollarSign },
 ];
 
 export function Layout({ children }: LayoutProps) {

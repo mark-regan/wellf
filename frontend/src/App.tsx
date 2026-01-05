@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth';
+import { useThemeStore } from '@/store/theme';
 import { Layout } from '@/components/layout/Layout';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
@@ -10,6 +11,7 @@ import { Portfolios } from '@/pages/Portfolios';
 import { PortfolioDetail } from '@/pages/PortfolioDetail';
 import { Holdings } from '@/pages/Holdings';
 import { Charts } from '@/pages/Charts';
+import { Prices } from '@/pages/Prices';
 import { FixedAssets } from '@/pages/FixedAssets';
 import { Settings } from '@/pages/Settings';
 
@@ -60,6 +62,13 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const initTheme = useThemeStore((state) => state.initTheme);
+
+  // Initialize theme on app load
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -120,6 +129,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Charts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/prices"
+            element={
+              <ProtectedRoute>
+                <Prices />
               </ProtectedRoute>
             }
           />

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mark-regan/wellf/internal/repository"
@@ -114,4 +115,40 @@ func (h *AssetHandler) RefreshPrices(w http.ResponseWriter, r *http.Request) {
 		"message": "Prices refreshed",
 		"count":   len(symbols),
 	})
+}
+
+func (h *AssetHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
+	symbolsParam := r.URL.Query().Get("symbols")
+	if symbolsParam == "" {
+		Error(w, http.StatusBadRequest, "symbols parameter is required")
+		return
+	}
+
+	symbols := strings.Split(symbolsParam, ",")
+	if len(symbols) == 0 {
+		Error(w, http.StatusBadRequest, "At least one symbol is required")
+		return
+	}
+
+	// Clean up symbols
+	cleanSymbols := make([]string, 0, len(symbols))
+	for _, s := range symbols {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			cleanSymbols = append(cleanSymbols, s)
+		}
+	}
+
+	if len(cleanSymbols) == 0 {
+		Error(w, http.StatusBadRequest, "At least one valid symbol is required")
+		return
+	}
+
+	quotes, err := h.yahooService.GetQuotes(r.Context(), cleanSymbols)
+	if err != nil {
+		Error(w, http.StatusInternalServerError, "Failed to fetch quotes")
+		return
+	}
+
+	JSON(w, http.StatusOK, quotes)
 }

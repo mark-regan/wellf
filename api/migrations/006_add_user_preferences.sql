@@ -1,0 +1,19 @@
+-- +migrate Up
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'system',
+ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20),
+ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+ADD COLUMN IF NOT EXISTS notify_email BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS notify_price_alerts BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS notify_weekly BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS notify_monthly BOOLEAN DEFAULT false;
+
+-- +migrate Down
+ALTER TABLE users
+DROP COLUMN IF EXISTS theme,
+DROP COLUMN IF EXISTS phone_number,
+DROP COLUMN IF EXISTS date_of_birth,
+DROP COLUMN IF EXISTS notify_email,
+DROP COLUMN IF EXISTS notify_price_alerts,
+DROP COLUMN IF EXISTS notify_weekly,
+DROP COLUMN IF EXISTS notify_monthly;
