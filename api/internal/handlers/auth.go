@@ -135,6 +135,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		"notify_weekly":       user.NotifyWeekly,
 		"notify_monthly":      user.NotifyMonthly,
 		"watchlist":           user.Watchlist,
+		"provider_lists":      user.ProviderLists,
 		"created_at":          user.CreatedAt,
 		"last_login_at":       user.LastLoginAt,
 	})
@@ -162,6 +163,7 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		NotifyWeekly      *bool    `json:"notify_weekly"`
 		NotifyMonthly     *bool    `json:"notify_monthly"`
 		Watchlist         *string  `json:"watchlist"`
+		ProviderLists     *string  `json:"provider_lists"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		Error(w, http.StatusBadRequest, "Invalid request body")
@@ -222,6 +224,9 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	if req.Watchlist != nil {
 		user.Watchlist = *req.Watchlist
 	}
+	if req.ProviderLists != nil {
+		user.ProviderLists = *req.ProviderLists
+	}
 
 	if err := h.authService.UpdateUser(r.Context(), user); err != nil {
 		Error(w, http.StatusInternalServerError, "Failed to update user")
@@ -245,6 +250,7 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		"notify_weekly":       user.NotifyWeekly,
 		"notify_monthly":      user.NotifyMonthly,
 		"watchlist":           user.Watchlist,
+		"provider_lists":      user.ProviderLists,
 	})
 }
 

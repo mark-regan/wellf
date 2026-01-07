@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { portfolioApi } from '@/api/portfolios';
 import { Portfolio, PortfolioSummary, PortfolioMetadata, PortfolioType } from '@/types';
+import { useAuthStore } from '@/store/auth';
+import { getProvidersForType, parseProviderLists } from '@/constants/providers';
 import { formatCurrency, formatPercentage, getChangeColor } from '@/utils/format';
 import {
   Plus,
@@ -111,6 +113,7 @@ const getPortfolioTypeStyle = (type: string, metadata?: PortfolioMetadata) => {
 
 export function Portfolios() {
   const location = useLocation();
+  const { user } = useAuthStore();
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [summaries, setSummaries] = useState<Map<string, PortfolioSummary>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -132,6 +135,11 @@ export function Portfolios() {
   const [newType, setNewType] = useState<PortfolioType>('GIA');
   const [newCurrency, setNewCurrency] = useState('GBP');
   const [metadata, setMetadata] = useState<PortfolioMetadata>({});
+  const [isOtherProvider, setIsOtherProvider] = useState(false);
+
+  // Get providers list for current type
+  const providerLists = parseProviderLists(user?.provider_lists);
+  const currentProviders = getProvidersForType(providerLists, newType);
 
   const loadPortfolios = async () => {
     try {
@@ -187,6 +195,7 @@ export function Portfolios() {
     setNewType('GIA');
     setNewCurrency('GBP');
     setMetadata(getDefaultMetadata('GIA'));
+    setIsOtherProvider(false);
     setError(null);
     setShowCreate(false);
   };
@@ -226,6 +235,10 @@ export function Portfolios() {
     // Merge existing metadata with defaults for the type
     const defaults = getDefaultMetadata(portfolio.type as PortfolioType);
     setMetadata({ ...defaults, ...portfolio.metadata });
+    // Check if current provider is in the list, if not, set to "Other" mode
+    const editProviders = getProvidersForType(providerLists, portfolio.type);
+    const currentProvider = portfolio.metadata?.provider || '';
+    setIsOtherProvider(currentProvider !== '' && !editProviders.includes(currentProvider));
     setError(null);
   };
 
@@ -235,6 +248,7 @@ export function Portfolios() {
     setNewType('GIA');
     setNewCurrency('GBP');
     setMetadata(getDefaultMetadata('GIA'));
+    setIsOtherProvider(false);
     setError(null);
   };
 
@@ -406,6 +420,7 @@ export function Portfolios() {
                       const type = e.target.value as PortfolioType;
                       setNewType(type);
                       setMetadata(getDefaultMetadata(type));
+                      setIsOtherProvider(false);
                     }}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
@@ -434,11 +449,33 @@ export function Portfolios() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium">Provider</label>
-                  <Input
-                    placeholder="e.g., Hargreaves Lansdown, Vanguard"
-                    value={metadata.provider || ''}
-                    onChange={(e) => updateMetadata('provider', e.target.value)}
-                  />
+                  <select
+                    value={isOtherProvider ? 'OTHER' : (metadata.provider || '')}
+                    onChange={(e) => {
+                      if (e.target.value === 'OTHER') {
+                        setIsOtherProvider(true);
+                        updateMetadata('provider', '');
+                      } else {
+                        setIsOtherProvider(false);
+                        updateMetadata('provider', e.target.value);
+                      }
+                    }}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select provider...</option>
+                    {currentProviders.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                    <option value="OTHER">Other...</option>
+                  </select>
+                  {isOtherProvider && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Enter provider name"
+                      value={metadata.provider || ''}
+                      onChange={(e) => updateMetadata('provider', e.target.value)}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Account Reference (optional)</label>
@@ -788,11 +825,33 @@ export function Portfolios() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium">Provider</label>
-                  <Input
-                    placeholder="e.g., Hargreaves Lansdown, Vanguard"
-                    value={metadata.provider || ''}
-                    onChange={(e) => updateMetadata('provider', e.target.value)}
-                  />
+                  <select
+                    value={isOtherProvider ? 'OTHER' : (metadata.provider || '')}
+                    onChange={(e) => {
+                      if (e.target.value === 'OTHER') {
+                        setIsOtherProvider(true);
+                        updateMetadata('provider', '');
+                      } else {
+                        setIsOtherProvider(false);
+                        updateMetadata('provider', e.target.value);
+                      }
+                    }}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select provider...</option>
+                    {getProvidersForType(providerLists, editingPortfolio.type).map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                    <option value="OTHER">Other...</option>
+                  </select>
+                  {isOtherProvider && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Enter provider name"
+                      value={metadata.provider || ''}
+                      onChange={(e) => updateMetadata('provider', e.target.value)}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Account Reference (optional)</label>

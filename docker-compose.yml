@@ -1,107 +1,436 @@
-version: '3.8'
+version: "3.8"
+
+# =============================================================================
+# Mac Mini (M4) Docker Compose Configuration
+# =============================================================================
+# This compose file contains compute-heavy services that benefit from
+# Apple Silicon's performance capabilities.
+#
+# Services:
+# - Jellyfin: Media server with VideoToolbox hardware transcoding
+# - Jellyseerr: Media request management
+# - Immich: Photo management with ML processing
+# - Cloudflared: Cloudflare Tunnel daemon for external access
+# - Portainer: Container management
+# - Homepage: Dashboard
+# =============================================================================
 
 services:
-  api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: wellf-api
+  # ===========================================================================
+  # Media Streaming
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Jellyfin - Media Server with Hardware Transcoding
+  # ---------------------------------------------------------------------------
+  # Note: Apple Silicon hardware acceleration uses VideoToolbox
+  # The jellyfin-ffmpeg package supports VideoToolbox on macOS/ARM64
+  jellyfin:
+    image: jellyfin/jellyfin:10.8.13
+    container_name: jellyfin
+    hostname: jellyfin
     restart: unless-stopped
+    networks:
+      - homelab
     ports:
-      - "${API_PORT:-4020}:4020"
+      - "8096:8096"
+      - "8920:8920"    # HTTPS (optional)
+      #- "1900:1900/udp" # DLNA discovery
+      - "7359:7359/udp" # Client discovery
+    volumes:
+      - ${DOCKER_DATA}/jellyfin/config:/config
+      - ${DOCKER_DATA}/jellyfin/cache:/cache
+      - ${MEDIA_PATH}:/media:ro
     environment:
-      - DATABASE_URL=postgres://${DB_USER:-wellf}:${DB_PASSWORD}@db:5432/${DB_NAME:-wellf}?sslmode=disable
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
-      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
-      - YAHOO_CACHE_TTL=${YAHOO_CACHE_TTL:-10m}
-      - BASE_CURRENCY=${BASE_CURRENCY:-GBP}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TZ=${TZ}
+      - JELLYFIN_PublishedServerUrl=https://media.${DOMAIN}
+      # Hardware acceleration environment
+      - JELLYFIN_FFmpeg__probesize=50000000
+      - JELLYFIN_FFmpeg__analyzeduration=50000000
+    # Apple Silicon doesn't require device passthrough like Linux GPU
+    # VideoToolbox is available natively via the macOS container runtime
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "homepage.group=Media"
+      - "homepage.name=Jellyfin"
+      - "homepage.icon=jellyfin.png"
+      - "homepage.href=https://media.${DOMAIN}"
+      - "homepage.description=Media Server"
+      - "homepage.widget.type=jellyfin"
+      - "homepage.widget.url=http://jellyfin:8096"
+      - "homepage.widget.key=${JELLYFIN_API_KEY}"
+      - "homepage.widget.enableBlocks=true"
+
+  # ---------------------------------------------------------------------------
+  # Jellyseerr - Media Request Management
+  # ---------------------------------------------------------------------------
+  jellyseerr:
+    image: sctx/overseerr:latest
+    container_name: jellyseerr
+    hostname: jellyseerr
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "5055:5055"
+    volumes:
+      - ${DOCKER_DATA}/jellyseerr:/app/config
+    environment:
+      - TZ=${TZ}
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5055/api/v1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - jellyfin
+    labels:
+      - "homepage.group=Media"
+      - "homepage.name=Jellyseerr"
+      - "homepage.icon=jellyseerr.png"
+      - "homepage.href=https://requests.${DOMAIN}"
+      - "homepage.description=Media Requests"
+      - "homepage.widget.type=jellyseerr"
+      - "homepage.widget.url=http://jellyseerr:5055"
+      - "homepage.widget.key=${JELLYSEERR_API_KEY}"
+
+  # ===========================================================================
+  # Photo Management
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Immich - Photo Management with ML
+  # ---------------------------------------------------------------------------
+  # Immich consists of multiple services:
+  # - Server: Main API and web interface
+  # - Machine Learning: Photo analysis and face recognition
+  # - Redis: Caching
+  # - PostgreSQL: Database
+
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:v2.4.1
+    container_name: immich-server
+    hostname: immich-server
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "2283:2283"
+    volumes:
+      - ${UPLOAD_PATH}:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=${TZ}
+      - DB_HOSTNAME=immich-postgres
+      - DB_USERNAME=${IMMICH_DB_USERNAME}
+      - DB_PASSWORD=${IMMICH_DB_PASSWORD}
+      - DB_DATABASE_NAME=${IMMICH_DB_DATABASE}
+      - REDIS_HOSTNAME=immich-redis
+      - IMMICH_MACHINE_LEARNING_URL=http://immich-machine-learning:3003
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2283/api/server-info/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - immich-redis
+      - immich-postgres
+      - immich-machine-learning
+    labels:
+      - "homepage.group=Media"
+      - "homepage.name=Immich"
+      - "homepage.icon=immich.png"
+      - "homepage.href=https://photos.${DOMAIN}"
+      - "homepage.description=Photo Management"
+      - "homepage.widget.type=immich"
+      - "homepage.widget.url=http://immich-server:2283"
+      - "homepage.widget.key=${IMMICH_API_KEY}"
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:v2.4.1
+    container_name: immich-machine-learning
+    hostname: immich-machine-learning
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ${DOCKER_DATA}/immich/model-cache:/cache
+    environment:
+      - TZ=${TZ}
+      # ARM64 compatible ML settings
+      - MACHINE_LEARNING_CACHE_FOLDER=/cache
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3003/ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  immich-redis:
+    image: redis:7.2-alpine
+    container_name: immich-redis
+    hostname: immich-redis
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ${DOCKER_DATA}/immich/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  immich-postgres:
+    image: ghcr.io/tensorchord/pgvecto-rs:pg14-v0.3.0 
+    container_name: immich-postgres
+    hostname: immich-postgres
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - ${DOCKER_DATA}/immich/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${IMMICH_DB_USERNAME}
+      - POSTGRES_PASSWORD=${IMMICH_DB_PASSWORD}
+      - POSTGRES_DB=${IMMICH_DB_DATABASE}
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256                                        
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256     
+    command: >
+      postgres                                                                         
+      -c shared_preload_libraries=vectors.so                                           
+      -c search_path="$$user",public,vectors  
+      -c listen_addresses=*                          
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IMMICH_DB_USERNAME} -d ${IMMICH_DB_DATABASE}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================================================
+  # External Access
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Cloudflared - Cloudflare Tunnel Daemon
+  # ---------------------------------------------------------------------------
+  # Provides secure external access without exposing ports
+  # Configure tunnels in Cloudflare Zero Trust dashboard
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    hostname: cloudflared
+    restart: unless-stopped
+    networks:
+      - homelab
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    environment:
+      - TZ=${TZ}
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "homepage.group=Infrastructure"
+      - "homepage.name=Cloudflared"
+      - "homepage.icon=cloudflare.png"
+      - "homepage.description=Cloudflare Tunnel"
+
+  # ===========================================================================
+  # Infrastructure
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Portainer - Container Management
+  # ---------------------------------------------------------------------------
+  portainer:
+    image: portainer/portainer-ce:2.33.6
+    container_name: portainer
+    hostname: portainer
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_DATA}/portainer:/data
+    environment:
+      - TZ=${TZ}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "homepage.group=Infrastructure"
+      - "homepage.name=Portainer"
+      - "homepage.icon=portainer.png"
+      - "homepage.href=https://portainer.${DOMAIN}"
+      - "homepage.description=Container Management"
+      - "homepage.widget.type=portainer"
+      - "homepage.widget.url=http://portainer:9000"
+      - "homepage.widget.env=1"
+      - "homepage.widget.key=${PORTAINER_API_KEY}"
+
+  # ---------------------------------------------------------------------------
+  # Homepage - Dashboard
+  # ---------------------------------------------------------------------------
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v1.8.0
+    container_name: homepage
+    hostname: homepage
+    restart: unless-stopped
+    networks:
+      - homelab
+    ports:
+      - "3002:3000"
+    volumes:
+      - ${DOCKER_DATA}/homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ}
+      - HOMEPAGE_ALLOWED_HOSTS=* 
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "homepage.group=Infrastructure"
+      - "homepage.name=Homepage"
+      - "homepage.icon=homepage.png"
+      - "homepage.href=https://home.${DOMAIN}"
+      - "homepage.description=Dashboard"
+
+  # ===========================================================================
+  # Finance
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Wellf - Personal Wealth Tracker
+  # ---------------------------------------------------------------------------
+  wellf-api:
+    image: ghcr.io/mark-regan/wellf-api:latest
+    container_name: wellf-api
+    hostname: wellf-api
+    restart: unless-stopped
+    networks:
+      - homelab
+    expose:
+      - "4020"
+    environment:
+      - TZ=${TZ}
+      - DATABASE_URL=postgres://${WELLF_DB_USER:-wellf}:${WELLF_DB_PASSWORD}@wellf-db:5432/${WELLF_DB_NAME:-wellf}?sslmode=disable
+      - REDIS_URL=redis://wellf-redis:6379
+      - JWT_SECRET=${WELLF_JWT_SECRET}
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - YAHOO_CACHE_TTL=10m
+      - BASE_CURRENCY=GBP
+      - LOG_LEVEL=info
       - CORS_ORIGINS=${CORS_ORIGINS:-}
     depends_on:
-      db:
+      wellf-db:
         condition: service_healthy
-      redis:
+      wellf-redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:4020/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - wellf-network
+      start_period: 30s
+    labels:
+      - "homepage.group=Finance"
+      - "homepage.name=Wellf API"
+      - "homepage.icon=mdi-api"
+      - "homepage.description=Wealth Tracker API"
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:4020}
+  wellf-frontend:
+    image: ghcr.io/mark-regan/wellf-frontend:latest
     container_name: wellf-frontend
+    hostname: wellf-frontend
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
-    depends_on:
-      - api
     networks:
-      - wellf-network
+      - homelab
+    environment:
+      - TZ=${TZ}
+    depends_on:
+      - wellf-api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "homepage.group=Finance"
+      - "homepage.name=Wellf"
+      - "homepage.icon=mdi-chart-line"
+      - "homepage.href=https://wellf.${DOMAIN}"
+      - "homepage.description=Personal Wealth Tracker"
 
-  db:
+  wellf-db:
     image: postgres:16-alpine
     container_name: wellf-db
+    hostname: wellf-db
     restart: unless-stopped
-    environment:
-      - POSTGRES_USER=${DB_USER:-wellf}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-wellf_dev_password}
-      - POSTGRES_DB=${DB_NAME:-wellf}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./api/migrations:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-wellf}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
-      - wellf-network
+      - homelab
+    volumes:
+      - ${DOCKER_DATA}/wellf/postgres:/var/lib/postgresql/data
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_USER=${WELLF_DB_USER:-wellf}
+      - POSTGRES_PASSWORD=${WELLF_DB_PASSWORD}
+      - POSTGRES_DB=${WELLF_DB_NAME:-wellf}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WELLF_DB_USER:-wellf}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
-  redis:
+  wellf-redis:
     image: redis:7-alpine
     container_name: wellf-redis
+    hostname: wellf-redis
     restart: unless-stopped
+    networks:
+      - homelab
     command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
+      - ${DOCKER_DATA}/wellf/redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - wellf-network
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
-  adminer:
-    image: adminer
-    container_name: wellf-adminer
-    restart: unless-stopped
-    ports:
-      - "${ADMINER_PORT:-8080}:8080"
-    depends_on:
-      - db
-    networks:
-      - wellf-network
-    profiles:
-      - tools
-
-volumes:
-  postgres_data:
-  redis_data:
-
+# =============================================================================
+# Networks
+# =============================================================================
 networks:
-  wellf-network:
+  homelab:
+    external: true
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

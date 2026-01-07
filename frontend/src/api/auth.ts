@@ -52,6 +52,7 @@ export const authApi = {
     notify_weekly?: boolean;
     notify_monthly?: boolean;
     watchlist?: string;
+    provider_lists?: string;
   }): Promise<User> => {
     const response = await api.put<User>('/auth/me', data);
     return response.data;

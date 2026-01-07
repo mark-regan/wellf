@@ -1,5 +1,17 @@
 export type Theme = 'light' | 'dark' | 'system';
 
+export interface ProviderLists {
+  GIA?: string[];
+  ISA?: string[];
+  SIPP?: string[];
+  LISA?: string[];
+  JISA?: string[];
+  CRYPTO?: string[];
+  SAVINGS?: string[];
+  CASH?: string[];
+  [key: string]: string[] | undefined;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -17,6 +29,7 @@ export interface User {
   notify_weekly: boolean;
   notify_monthly: boolean;
   watchlist?: string;
+  provider_lists?: string;
   created_at: string;
   last_login_at?: string;
 }

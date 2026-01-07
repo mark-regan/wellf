@@ -26,8 +26,8 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
-		INSERT INTO users (id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled, theme, phone_number, date_of_birth, notify_email, notify_price_alerts, notify_weekly, notify_monthly, watchlist, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+		INSERT INTO users (id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled, theme, phone_number, date_of_birth, notify_email, notify_price_alerts, notify_weekly, notify_monthly, watchlist, provider_lists, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 	`
 
 	user.ID = uuid.New()
@@ -63,6 +63,7 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 		user.NotifyWeekly,
 		user.NotifyMonthly,
 		user.Watchlist,
+		user.ProviderLists,
 		user.CreatedAt,
 		user.UpdatedAt,
 	)
@@ -82,7 +83,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 		SELECT id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled,
 			COALESCE(theme, 'system'), COALESCE(phone_number, ''), date_of_birth,
 			COALESCE(notify_email, true), COALESCE(notify_price_alerts, false), COALESCE(notify_weekly, false), COALESCE(notify_monthly, false),
-			COALESCE(watchlist, ''), created_at, updated_at, last_login_at
+			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), created_at, updated_at, last_login_at
 		FROM users
 		WHERE id = $1
 	`
@@ -106,6 +107,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 		&user.NotifyWeekly,
 		&user.NotifyMonthly,
 		&user.Watchlist,
+		&user.ProviderLists,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.LastLoginAt,
@@ -126,7 +128,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 		SELECT id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled,
 			COALESCE(theme, 'system'), COALESCE(phone_number, ''), date_of_birth,
 			COALESCE(notify_email, true), COALESCE(notify_price_alerts, false), COALESCE(notify_weekly, false), COALESCE(notify_monthly, false),
-			COALESCE(watchlist, ''), created_at, updated_at, last_login_at
+			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), created_at, updated_at, last_login_at
 		FROM users
 		WHERE email = $1
 	`
@@ -150,6 +152,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 		&user.NotifyWeekly,
 		&user.NotifyMonthly,
 		&user.Watchlist,
+		&user.ProviderLists,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.LastLoginAt,
@@ -168,7 +171,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 func (r *UserRepository) Update(ctx context.Context, user *models.User) error {
 	query := `
 		UPDATE users
-		SET display_name = $2, base_currency = $3, date_format = $4, locale = $5, fire_target = $6, fire_enabled = $7, theme = $8, phone_number = $9, date_of_birth = $10, notify_email = $11, notify_price_alerts = $12, notify_weekly = $13, notify_monthly = $14, watchlist = $15, updated_at = $16
+		SET display_name = $2, base_currency = $3, date_format = $4, locale = $5, fire_target = $6, fire_enabled = $7, theme = $8, phone_number = $9, date_of_birth = $10, notify_email = $11, notify_price_alerts = $12, notify_weekly = $13, notify_monthly = $14, watchlist = $15, provider_lists = $16, updated_at = $17
 		WHERE id = $1
 	`
 
@@ -190,6 +193,7 @@ func (r *UserRepository) Update(ctx context.Context, user *models.User) error {
 		user.NotifyWeekly,
 		user.NotifyMonthly,
 		user.Watchlist,
+		user.ProviderLists,
 		user.UpdatedAt,
 	)
 

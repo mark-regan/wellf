@@ -7,9 +7,10 @@ import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
 import { Theme } from '@/types';
-import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut } from 'lucide-react';
+import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut, Building2, RotateCcw } from 'lucide-react';
 import { assetApi } from '@/api/assets';
-import { AssetSearchResult } from '@/types';
+import { AssetSearchResult, ProviderLists, PortfolioType } from '@/types';
+import { DEFAULT_PROVIDERS, PORTFOLIO_TYPE_LABELS, parseProviderLists, stringifyProviderLists } from '@/constants/providers';
 
 const CURRENCIES = [
   { code: 'GBP', name: 'British Pound' },
@@ -48,12 +49,13 @@ const LOCALES = [
   { value: 'zh-CN', label: 'Chinese (Simplified)' },
 ];
 
-type Section = 'profile' | 'appearance' | 'financial' | 'notifications' | 'security' | 'watchlist';
+type Section = 'profile' | 'appearance' | 'financial' | 'notifications' | 'security' | 'watchlist' | 'providers';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'financial', label: 'Financial', icon: DollarSign },
+  { id: 'providers', label: 'Providers', icon: Building2 },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'watchlist', label: 'Watchlist', icon: Star },
@@ -118,6 +120,10 @@ export function Settings() {
   const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Providers state
+  const [providerLists, setProviderLists] = useState<ProviderLists>({});
+  const [newProvider, setNewProvider] = useState<Record<string, string>>({});
+
   // UI state
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -138,6 +144,7 @@ export function Settings() {
       setNotifyWeekly(user.notify_weekly ?? false);
       setNotifyMonthly(user.notify_monthly ?? false);
       setWatchlistItems(user.watchlist ? user.watchlist.split(',').filter(s => s.trim()) : []);
+      setProviderLists(parseProviderLists(user.provider_lists));
     }
   }, [user]);
 
@@ -263,6 +270,75 @@ export function Settings() {
       setWatchlistItems(watchlistItems); // revert
       setMessage({ type: 'error', text: 'Failed to update watchlist' });
     }
+  };
+
+  // Provider list functions
+  const handleAddProvider = async (type: PortfolioType) => {
+    const provider = newProvider[type]?.trim();
+    if (!provider) return;
+
+    const currentList = providerLists[type] || DEFAULT_PROVIDERS[type] || [];
+    if (currentList.includes(provider)) {
+      setMessage({ type: 'error', text: 'Provider already exists' });
+      return;
+    }
+
+    const updatedLists: ProviderLists = {
+      ...providerLists,
+      [type]: [...currentList, provider],
+    };
+    setProviderLists(updatedLists);
+    setNewProvider({ ...newProvider, [type]: '' });
+
+    try {
+      const updated = await authApi.updateMe({ provider_lists: stringifyProviderLists(updatedLists) });
+      setUser(updated);
+      setMessage({ type: 'success', text: `Added ${provider} to ${type} providers` });
+    } catch {
+      setProviderLists(providerLists);
+      setMessage({ type: 'error', text: 'Failed to update providers' });
+    }
+  };
+
+  const handleRemoveProvider = async (type: PortfolioType, provider: string) => {
+    const currentList = providerLists[type] || DEFAULT_PROVIDERS[type] || [];
+    const updatedList = currentList.filter(p => p !== provider);
+
+    const updatedLists: ProviderLists = {
+      ...providerLists,
+      [type]: updatedList,
+    };
+    setProviderLists(updatedLists);
+
+    try {
+      const updated = await authApi.updateMe({ provider_lists: stringifyProviderLists(updatedLists) });
+      setUser(updated);
+      setMessage({ type: 'success', text: `Removed ${provider} from ${type} providers` });
+    } catch {
+      setProviderLists(providerLists);
+      setMessage({ type: 'error', text: 'Failed to update providers' });
+    }
+  };
+
+  const handleResetProviders = async (type: PortfolioType) => {
+    const updatedLists: ProviderLists = {
+      ...providerLists,
+    };
+    delete updatedLists[type];
+    setProviderLists(updatedLists);
+
+    try {
+      const updated = await authApi.updateMe({ provider_lists: stringifyProviderLists(updatedLists) });
+      setUser(updated);
+      setMessage({ type: 'success', text: `Reset ${type} providers to defaults` });
+    } catch {
+      setProviderLists(providerLists);
+      setMessage({ type: 'error', text: 'Failed to reset providers' });
+    }
+  };
+
+  const getProvidersForTypeLocal = (type: PortfolioType): string[] => {
+    return providerLists[type] || DEFAULT_PROVIDERS[type] || [];
   };
 
   const setSection = (section: Section) => {
@@ -660,6 +736,81 @@ export function Settings() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Providers Section */}
+        {activeSection === 'providers' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Provider Lists</CardTitle>
+              <CardDescription>Customize the provider options shown when creating portfolios</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {(['GIA', 'ISA', 'SIPP', 'LISA', 'JISA', 'CRYPTO', 'SAVINGS', 'CASH'] as PortfolioType[]).map((type) => (
+                <div key={type} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-medium">{PORTFOLIO_TYPE_LABELS[type] || type}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {providerLists[type] ? 'Custom list' : 'Using defaults'}
+                      </p>
+                    </div>
+                    {providerLists[type] && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleResetProviders(type)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {getProvidersForTypeLocal(type).map((provider) => (
+                      <div
+                        key={provider}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-muted rounded-full text-sm"
+                      >
+                        <span>{provider}</span>
+                        <button
+                          onClick={() => handleRemoveProvider(type, provider)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add provider..."
+                      value={newProvider[type] || ''}
+                      onChange={(e) => setNewProvider({ ...newProvider, [type]: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddProvider(type);
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAddProvider(type)}
+                      disabled={!newProvider[type]?.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
         {/* Watchlist Section */}

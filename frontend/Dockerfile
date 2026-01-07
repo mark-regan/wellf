@@ -3,19 +3,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
-
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source code (includes .env.production with VITE_API_URL)
 COPY . .
 
-# Build the application
+# Build the application - Vite will read from .env.production
 RUN npm run build
 
 # Production stage

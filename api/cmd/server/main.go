@@ -48,6 +48,14 @@ func main() {
 	}
 	defer db.Close()
 
+	// Run migrations
+	logger.Info("running database migrations...")
+	if err := db.Migrate("./migrations"); err != nil {
+		logger.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("migrations completed successfully")
+
 	// Connect to Redis
 	redis, err := database.NewRedis(cfg.Redis.URL)
 	if err != nil {
@@ -98,7 +106,7 @@ func main() {
 	r.Use(middleware.Recoverer(logger))
 	r.Use(middleware.JSON)
 	// CORS origins - defaults plus any from CORS_ORIGINS env var
-	corsOrigins := []string{"http://localhost:3000", "http://localhost:5173"}
+	corsOrigins := []string{"http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "https://wellf.mkrn.io", "http://wellf.mkrn.io"}
 	if origins := os.Getenv("CORS_ORIGINS"); origins != "" {
 		for _, origin := range strings.Split(origins, ",") {
 			corsOrigins = append(corsOrigins, strings.TrimSpace(origin))
