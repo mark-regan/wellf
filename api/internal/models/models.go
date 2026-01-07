@@ -27,6 +27,9 @@ type User struct {
 	NotifyMonthly     bool       `json:"notify_monthly"`
 	Watchlist         string     `json:"watchlist,omitempty"`
 	ProviderLists     string     `json:"provider_lists,omitempty"`
+	// Admin fields
+	IsAdmin  bool `json:"is_admin"`
+	IsLocked bool `json:"is_locked"`
 	// Timestamps
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`

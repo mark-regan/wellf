@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS users (
     notify_monthly BOOLEAN DEFAULT false,
     watchlist TEXT DEFAULT '',
     provider_lists TEXT DEFAULT '',
+    is_admin BOOLEAN DEFAULT false,
+    is_locked BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     last_login_at TIMESTAMPTZ
@@ -195,6 +197,14 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'provider_lists') THEN
         ALTER TABLE users ADD COLUMN provider_lists TEXT DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_admin') THEN
+        ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT false;
+        -- Make all existing users admins
+        UPDATE users SET is_admin = true;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_locked') THEN
+        ALTER TABLE users ADD COLUMN is_locked BOOLEAN DEFAULT false;
     END IF;
 
     -- Holdings table columns

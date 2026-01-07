@@ -17,6 +17,7 @@ var (
 	ErrEmailAlreadyExists = errors.New("email already registered")
 	ErrWeakPassword       = errors.New("password does not meet requirements")
 	ErrInvalidEmail       = errors.New("invalid email format")
+	ErrAccountLocked      = errors.New("account is locked")
 )
 
 type AuthService struct {
@@ -146,6 +147,11 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthTokens
 			return nil, nil, ErrInvalidCredentials
 		}
 		return nil, nil, err
+	}
+
+	// Check if account is locked
+	if user.IsLocked {
+		return nil, nil, ErrAccountLocked
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {

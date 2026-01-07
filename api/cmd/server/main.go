@@ -96,6 +96,7 @@ func main() {
 	fixedAssetHandler := handlers.NewFixedAssetHandler(fixedAssetRepo)
 	dashboardHandler := handlers.NewDashboardHandler(portfolioRepo, holdingRepo, txRepo, cashRepo, fixedAssetRepo, userRepo, yahooService)
 	healthHandler := handlers.NewHealthHandler(db, redis)
+	adminHandler := handlers.NewAdminHandler(userRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -198,6 +199,17 @@ func main() {
 			r.Get("/dashboard/allocation", dashboardHandler.Allocation)
 			r.Get("/dashboard/top-movers", dashboardHandler.TopMovers)
 			r.Get("/dashboard/performance", dashboardHandler.Performance)
+
+			// Admin routes (requires admin privileges)
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(middleware.AdminOnly(userRepo))
+				r.Get("/users", adminHandler.ListUsers)
+				r.Delete("/users/{id}", adminHandler.DeleteUser)
+				r.Put("/users/{id}/lock", adminHandler.LockUser)
+				r.Put("/users/{id}/unlock", adminHandler.UnlockUser)
+				r.Put("/users/{id}/admin", adminHandler.SetAdmin)
+				r.Post("/users/{id}/reset-password", adminHandler.ResetPassword)
+			})
 		})
 	})
 

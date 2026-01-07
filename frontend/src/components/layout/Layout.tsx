@@ -13,19 +13,22 @@ import {
   Settings,
   DollarSign,
   ChevronDown,
+  Shield,
 } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navItems = [
+const baseNavItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/portfolios', label: 'Portfolios', icon: Briefcase },
   { path: '/holdings', label: 'Holdings', icon: PieChart },
   { path: '/charts', label: 'Charts', icon: LineChart },
   { path: '/prices', label: 'Prices', icon: DollarSign },
 ];
+
+const adminNavItem = { path: '/admin', label: 'Admin', icon: Shield };
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
@@ -67,7 +70,7 @@ export function Layout({ children }: LayoutProps) {
               <span className="text-xl font-bold">wellf</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
+              {[...baseNavItems, ...(user?.is_admin ? [adminNavItem] : [])].map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (

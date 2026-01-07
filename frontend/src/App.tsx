@@ -14,6 +14,7 @@ import { Charts } from '@/pages/Charts';
 import { Prices } from '@/pages/Prices';
 import { FixedAssets } from '@/pages/FixedAssets';
 import { Settings } from '@/pages/Settings';
+import { Admin } from '@/pages/Admin';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -153,6 +154,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             }
           />

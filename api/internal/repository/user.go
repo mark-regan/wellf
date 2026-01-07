@@ -26,8 +26,8 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
-		INSERT INTO users (id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled, theme, phone_number, date_of_birth, notify_email, notify_price_alerts, notify_weekly, notify_monthly, watchlist, provider_lists, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+		INSERT INTO users (id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled, theme, phone_number, date_of_birth, notify_email, notify_price_alerts, notify_weekly, notify_monthly, watchlist, provider_lists, is_admin, is_locked, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 	`
 
 	user.ID = uuid.New()
@@ -64,6 +64,8 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 		user.NotifyMonthly,
 		user.Watchlist,
 		user.ProviderLists,
+		user.IsAdmin,
+		user.IsLocked,
 		user.CreatedAt,
 		user.UpdatedAt,
 	)
@@ -83,7 +85,8 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 		SELECT id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled,
 			COALESCE(theme, 'system'), COALESCE(phone_number, ''), date_of_birth,
 			COALESCE(notify_email, true), COALESCE(notify_price_alerts, false), COALESCE(notify_weekly, false), COALESCE(notify_monthly, false),
-			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), created_at, updated_at, last_login_at
+			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), COALESCE(is_admin, false), COALESCE(is_locked, false),
+			created_at, updated_at, last_login_at
 		FROM users
 		WHERE id = $1
 	`
@@ -108,6 +111,8 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Use
 		&user.NotifyMonthly,
 		&user.Watchlist,
 		&user.ProviderLists,
+		&user.IsAdmin,
+		&user.IsLocked,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.LastLoginAt,
@@ -128,7 +133,8 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 		SELECT id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled,
 			COALESCE(theme, 'system'), COALESCE(phone_number, ''), date_of_birth,
 			COALESCE(notify_email, true), COALESCE(notify_price_alerts, false), COALESCE(notify_weekly, false), COALESCE(notify_monthly, false),
-			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), created_at, updated_at, last_login_at
+			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), COALESCE(is_admin, false), COALESCE(is_locked, false),
+			created_at, updated_at, last_login_at
 		FROM users
 		WHERE email = $1
 	`
@@ -153,6 +159,8 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 		&user.NotifyMonthly,
 		&user.Watchlist,
 		&user.ProviderLists,
+		&user.IsAdmin,
+		&user.IsLocked,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.LastLoginAt,
@@ -280,4 +288,100 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// List returns all users (for admin)
+func (r *UserRepository) List(ctx context.Context) ([]models.User, error) {
+	query := `
+		SELECT id, email, password_hash, display_name, base_currency, date_format, locale, fire_target, fire_enabled,
+			COALESCE(theme, 'system'), COALESCE(phone_number, ''), date_of_birth,
+			COALESCE(notify_email, true), COALESCE(notify_price_alerts, false), COALESCE(notify_weekly, false), COALESCE(notify_monthly, false),
+			COALESCE(watchlist, ''), COALESCE(provider_lists, ''), COALESCE(is_admin, false), COALESCE(is_locked, false),
+			created_at, updated_at, last_login_at
+		FROM users
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var user models.User
+		err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.PasswordHash,
+			&user.DisplayName,
+			&user.BaseCurrency,
+			&user.DateFormat,
+			&user.Locale,
+			&user.FireTarget,
+			&user.FireEnabled,
+			&user.Theme,
+			&user.PhoneNumber,
+			&user.DateOfBirth,
+			&user.NotifyEmail,
+			&user.NotifyPriceAlerts,
+			&user.NotifyWeekly,
+			&user.NotifyMonthly,
+			&user.Watchlist,
+			&user.ProviderLists,
+			&user.IsAdmin,
+			&user.IsLocked,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+			&user.LastLoginAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, rows.Err()
+}
+
+// SetAdmin updates the admin status of a user
+func (r *UserRepository) SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) error {
+	query := `UPDATE users SET is_admin = $2, updated_at = $3 WHERE id = $1`
+
+	result, err := r.pool.Exec(ctx, query, id, isAdmin, time.Now())
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}
+
+// SetLocked updates the locked status of a user
+func (r *UserRepository) SetLocked(ctx context.Context, id uuid.UUID, isLocked bool) error {
+	query := `UPDATE users SET is_locked = $2, updated_at = $3 WHERE id = $1`
+
+	result, err := r.pool.Exec(ctx, query, id, isLocked, time.Now())
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}
+
+// CountAdmins returns the number of admin users
+func (r *UserRepository) CountAdmins(ctx context.Context) (int, error) {
+	query := `SELECT COUNT(*) FROM users WHERE is_admin = true`
+
+	var count int
+	err := r.pool.QueryRow(ctx, query).Scan(&count)
+	return count, err
 }

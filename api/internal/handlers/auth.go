@@ -69,6 +69,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Error(w, http.StatusUnauthorized, "Invalid credentials")
 			return
 		}
+		if errors.Is(err, services.ErrAccountLocked) {
+			Error(w, http.StatusForbidden, "Account is locked. Please contact an administrator.")
+			return
+		}
 		Error(w, http.StatusInternalServerError, "Login failed")
 		return
 	}
@@ -136,6 +140,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		"notify_monthly":      user.NotifyMonthly,
 		"watchlist":           user.Watchlist,
 		"provider_lists":      user.ProviderLists,
+		"is_admin":            user.IsAdmin,
 		"created_at":          user.CreatedAt,
 		"last_login_at":       user.LastLoginAt,
 	})

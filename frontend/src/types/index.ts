@@ -30,6 +30,18 @@ export interface User {
   notify_monthly: boolean;
   watchlist?: string;
   provider_lists?: string;
+  is_admin: boolean;
+  created_at: string;
+  last_login_at?: string;
+}
+
+// Admin user list response
+export interface AdminUser {
+  id: string;
+  email: string;
+  display_name?: string;
+  is_admin: boolean;
+  is_locked: boolean;
   created_at: string;
   last_login_at?: string;
 }
