@@ -18,6 +18,7 @@ services:
       - YAHOO_CACHE_TTL=${YAHOO_CACHE_TTL:-10m}
       - BASE_CURRENCY=${BASE_CURRENCY:-GBP}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
     depends_on:
       db:
         condition: service_healthy

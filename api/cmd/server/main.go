@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -96,8 +97,15 @@ func main() {
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.Recoverer(logger))
 	r.Use(middleware.JSON)
+	// CORS origins - defaults plus any from CORS_ORIGINS env var
+	corsOrigins := []string{"http://localhost:3000", "http://localhost:5173"}
+	if origins := os.Getenv("CORS_ORIGINS"); origins != "" {
+		for _, origin := range strings.Split(origins, ",") {
+			corsOrigins = append(corsOrigins, strings.TrimSpace(origin))
+		}
+	}
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173"},
+		AllowedOrigins:   corsOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"X-Request-ID"},
