@@ -21,18 +21,20 @@ var (
 )
 
 type AuthService struct {
-	userRepo      *repository.UserRepository
-	portfolioRepo *repository.PortfolioRepository
-	jwtManager    *jwt.Manager
-	validator     *validator.Validator
+	userRepo       *repository.UserRepository
+	portfolioRepo  *repository.PortfolioRepository
+	jwtManager     *jwt.Manager
+	validator      *validator.Validator
+	tokenBlacklist *TokenBlacklist
 }
 
-func NewAuthService(userRepo *repository.UserRepository, portfolioRepo *repository.PortfolioRepository, jwtManager *jwt.Manager, v *validator.Validator) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, portfolioRepo *repository.PortfolioRepository, jwtManager *jwt.Manager, v *validator.Validator, tokenBlacklist *TokenBlacklist) *AuthService {
 	return &AuthService{
-		userRepo:      userRepo,
-		portfolioRepo: portfolioRepo,
-		jwtManager:    jwtManager,
-		validator:     v,
+		userRepo:       userRepo,
+		portfolioRepo:  portfolioRepo,
+		jwtManager:     jwtManager,
+		validator:      v,
+		tokenBlacklist: tokenBlacklist,
 	}
 }
 
@@ -173,9 +175,19 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthTokens
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*AuthTokens, error) {
-	claims, err := s.jwtManager.ValidateToken(refreshToken)
+	// Use ValidateRefreshToken to ensure this is actually a refresh token, not an access token
+	claims, err := s.jwtManager.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if this refresh token has been blacklisted (token rotation)
+	tokenID := claims.ID
+	if tokenID != "" && s.tokenBlacklist != nil {
+		blacklisted, err := s.tokenBlacklist.IsBlacklisted(ctx, tokenID)
+		if err == nil && blacklisted {
+			return nil, jwt.ErrInvalidToken
+		}
 	}
 
 	user, err := s.userRepo.GetByID(ctx, claims.UserID)
@@ -183,7 +195,62 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*A
 		return nil, err
 	}
 
-	return s.generateTokens(user)
+	// Check if the user account is locked
+	if user.IsLocked {
+		return nil, ErrAccountLocked
+	}
+
+	// Generate new tokens
+	tokens, err := s.generateTokens(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Blacklist the old refresh token (token rotation - issue 6)
+	// Calculate remaining TTL for the old token
+	if tokenID != "" && s.tokenBlacklist != nil {
+		expiresAt, _ := claims.GetExpirationTime()
+		if expiresAt != nil {
+			ttl := expiresAt.Time.Sub(claims.IssuedAt.Time)
+			if ttl > 0 {
+				_ = s.tokenBlacklist.BlacklistToken(ctx, tokenID, ttl)
+			}
+		}
+	}
+
+	return tokens, nil
+}
+
+// Logout blacklists the provided access token to prevent further use
+func (s *AuthService) Logout(ctx context.Context, accessToken string) error {
+	if s.tokenBlacklist == nil {
+		return nil // Blacklist not configured
+	}
+
+	// Validate the token to get its claims
+	claims, err := s.jwtManager.ValidateToken(accessToken)
+	if err != nil {
+		// Token already invalid, nothing to blacklist
+		return nil
+	}
+
+	// Blacklist the access token for its remaining validity period
+	expiresAt, _ := claims.GetExpirationTime()
+	if expiresAt != nil {
+		ttl := expiresAt.Time.Sub(claims.IssuedAt.Time)
+		if ttl > 0 {
+			// Use the subject (user ID) + issued at as a unique identifier for access tokens
+			tokenKey := claims.Subject + ":" + claims.IssuedAt.Time.Format("20060102150405")
+			return s.tokenBlacklist.BlacklistToken(ctx, tokenKey, ttl)
+		}
+	}
+
+	return nil
+}
+
+// GetTokenBlacklist returns the token blacklist service
+func (s *AuthService) GetTokenBlacklist() *TokenBlacklist {
+	return s.tokenBlacklist
 }
 
 func (s *AuthService) GetUser(ctx context.Context, userID uuid.UUID) (*models.User, error) {

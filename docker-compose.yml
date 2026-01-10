@@ -345,6 +345,7 @@ services:
       - BASE_CURRENCY=GBP
       - LOG_LEVEL=info
       - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - ENV=production
     depends_on:
       wellf-db:
         condition: service_healthy
@@ -356,6 +357,16 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    # Security: Run as non-root user, set resource limits
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
     labels:
       - "homepage.group=Finance"
       - "homepage.name=Wellf API"
@@ -379,6 +390,16 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    # Security: Resource limits
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
     labels:
       - "homepage.group=Finance"
       - "homepage.name=Wellf"
@@ -406,6 +427,16 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    # Security: Resource limits and no privilege escalation
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
 
   wellf-redis:
     image: redis:7-alpine
@@ -423,6 +454,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
 
 # =============================================================================
 # Networks

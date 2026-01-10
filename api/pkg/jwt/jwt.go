@@ -9,8 +9,14 @@ import (
 )
 
 var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("token has expired")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrExpiredToken      = errors.New("token has expired")
+	ErrInvalidTokenType  = errors.New("invalid token type")
+)
+
+const (
+	IssuerAccess  = "wellf"
+	IssuerRefresh = "wellf-refresh"
 )
 
 type Claims struct {
@@ -41,7 +47,7 @@ func (m *Manager) GenerateAccessToken(userID uuid.UUID, email string) (string, e
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.expiresIn)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "wellf",
+			Issuer:    IssuerAccess,
 			Subject:   userID.String(),
 		},
 	}
@@ -51,14 +57,16 @@ func (m *Manager) GenerateAccessToken(userID uuid.UUID, email string) (string, e
 }
 
 func (m *Manager) GenerateRefreshToken(userID uuid.UUID, email string) (string, error) {
+	tokenID := uuid.New().String() // Unique ID for token rotation tracking
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        tokenID,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.refreshExpiresIn)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "wellf-refresh",
+			Issuer:    IssuerRefresh,
 			Subject:   userID.String(),
 		},
 	}
@@ -85,6 +93,22 @@ func (m *Manager) ValidateToken(tokenString string) (*Claims, error) {
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, ErrInvalidToken
+	}
+
+	return claims, nil
+}
+
+// ValidateRefreshToken validates a token and ensures it's specifically a refresh token
+func (m *Manager) ValidateRefreshToken(tokenString string) (*Claims, error) {
+	claims, err := m.ValidateToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify this is actually a refresh token, not an access token
+	issuer, err := claims.GetIssuer()
+	if err != nil || issuer != IssuerRefresh {
+		return nil, ErrInvalidTokenType
 	}
 
 	return claims, nil

@@ -40,6 +40,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Security check: Ensure JWT_SECRET is set in production (issue 4)
+	if cfg.JWT.Secret == "dev-secret-change-in-production" {
+		if os.Getenv("GO_ENV") == "production" || os.Getenv("ENV") == "production" {
+			logger.Error("SECURITY ERROR: JWT_SECRET must be set in production! Using default secret is not allowed.")
+			os.Exit(1)
+		}
+		logger.Warn("WARNING: Using default JWT secret. Set JWT_SECRET environment variable for production use.")
+	}
+
 	// Connect to database
 	db, err := database.New(cfg.Database.URL)
 	if err != nil {
@@ -70,6 +79,14 @@ func main() {
 	// Initialize validator
 	v := validator.New()
 
+	// Initialize token blacklist service (issues 2 & 6)
+	tokenBlacklist := services.NewTokenBlacklist(redis.Client)
+
+	// Initialize rate limiters (issue 3)
+	apiRateLimiter := middleware.NewRateLimiter(redis.Client, 100, time.Minute, "api")       // 100 requests per minute
+	loginRateLimiter := middleware.NewRateLimiter(redis.Client, 5, time.Minute, "login")    // 5 login attempts per minute
+	registerRateLimiter := middleware.NewRateLimiter(redis.Client, 3, time.Minute, "register") // 3 registrations per minute
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db.Pool)
 	portfolioRepo := repository.NewPortfolioRepository(db.Pool)
@@ -84,7 +101,7 @@ func main() {
 	yahooService := services.NewYahooService(yahooClient, assetRepo, redis, cfg.Yahoo.CacheTTL, logger)
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, portfolioRepo, jwtManager, v)
+	authService := services.NewAuthService(userRepo, portfolioRepo, jwtManager, v, tokenBlacklist)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -124,6 +141,9 @@ func main() {
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Apply general API rate limiting (issue 3)
+		r.Use(apiRateLimiter.Limit)
+
 		// Public routes
 		r.Get("/health", healthHandler.Health)
 		r.Get("/health/ready", healthHandler.Ready)
@@ -132,16 +152,16 @@ func main() {
 		r.Get("/config/portfolio-types", healthHandler.PortfolioTypes)
 		r.Get("/config/transaction-types", healthHandler.TransactionTypes)
 
-		// Auth routes (public)
+		// Auth routes (public) with stricter rate limiting
 		r.Route("/auth", func(r chi.Router) {
-			r.Post("/register", authHandler.Register)
-			r.Post("/login", authHandler.Login)
+			r.With(registerRateLimiter.Limit).Post("/register", authHandler.Register)
+			r.With(loginRateLimiter.Limit).Post("/login", authHandler.Login)
 			r.Post("/refresh", authHandler.Refresh)
 		})
 
-		// Protected routes
+		// Protected routes with token blacklist checking (issues 2 & 6)
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.Auth(jwtManager))
+			r.Use(middleware.AuthWithBlacklist(jwtManager, tokenBlacklist))
 
 			// Auth
 			r.Get("/auth/me", authHandler.Me)

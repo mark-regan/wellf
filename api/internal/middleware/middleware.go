@@ -48,8 +48,18 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// TokenBlacklistChecker is an interface for checking if tokens are blacklisted
+type TokenBlacklistChecker interface {
+	IsBlacklisted(ctx context.Context, tokenID string) (bool, error)
+}
+
 // Auth middleware for JWT authentication
 func Auth(jwtManager *jwt.Manager) func(http.Handler) http.Handler {
+	return AuthWithBlacklist(jwtManager, nil)
+}
+
+// AuthWithBlacklist is Auth middleware with optional token blacklist checking
+func AuthWithBlacklist(jwtManager *jwt.Manager, blacklist TokenBlacklistChecker) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -72,6 +82,17 @@ func Auth(jwtManager *jwt.Manager) func(http.Handler) http.Handler {
 				}
 				http.Error(w, `{"error":"Invalid token"}`, http.StatusUnauthorized)
 				return
+			}
+
+			// Check if the token has been blacklisted (e.g., after logout)
+			if blacklist != nil {
+				// For access tokens, we use subject + issued at as the key
+				tokenKey := claims.Subject + ":" + claims.IssuedAt.Time.Format("20060102150405")
+				blacklisted, err := blacklist.IsBlacklisted(r.Context(), tokenKey)
+				if err == nil && blacklisted {
+					http.Error(w, `{"error":"Token has been revoked"}`, http.StatusUnauthorized)
+					return
+				}
 			}
 
 			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)

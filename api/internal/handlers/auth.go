@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/mark-regan/wellf/internal/middleware"
@@ -292,7 +293,15 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	// For stateless JWT, logout is handled client-side
-	// Optionally, we could blacklist the token in Redis
+	// Extract the token from the Authorization header and blacklist it
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			// Blacklist the access token
+			_ = h.authService.Logout(r.Context(), parts[1])
+		}
+	}
+
 	JSON(w, http.StatusOK, map[string]string{"message": "Logged out successfully"})
 }
