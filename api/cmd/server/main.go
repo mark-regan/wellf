@@ -109,6 +109,7 @@ func main() {
 	// Initialize services
 	authService := services.NewAuthService(userRepo, portfolioRepo, jwtManager, v, tokenBlacklist)
 	reminderService := services.NewReminderService(documentRepo, vehicleRepo, insuranceRepo, propertyRepo)
+	reportService := services.NewReportService(personRepo, propertyRepo, vehicleRepo, insuranceRepo, documentRepo, portfolioRepo, holdingRepo, cashRepo, fixedAssetRepo, reminderService)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -128,6 +129,7 @@ func main() {
 	insuranceHandler := handlers.NewInsuranceHandler(insuranceRepo, householdRepo)
 	documentHandler := handlers.NewDocumentHandler(documentRepo, householdRepo)
 	reminderHandler := handlers.NewReminderHandler(reminderService, householdRepo)
+	reportHandler := handlers.NewReportHandler(reportService, householdRepo, userRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -331,6 +333,15 @@ func main() {
 				r.Get("/", reminderHandler.GetReminders)
 				r.Get("/summary", reminderHandler.GetReminderSummary)
 				r.Get("/calendar", reminderHandler.GetCalendarEvents)
+			})
+
+			// Reports & Insights
+			r.Route("/reports", func(r chi.Router) {
+				r.Get("/household-overview", reportHandler.GetHouseholdOverview)
+				r.Get("/net-worth", reportHandler.GetNetWorthBreakdown)
+				r.Get("/insurance-coverage", reportHandler.GetInsuranceCoverage)
+				r.Get("/asset-allocation", reportHandler.GetAssetAllocation)
+				r.Get("/upcoming-events", reportHandler.GetUpcomingEvents)
 			})
 
 			// Admin routes (requires admin privileges)

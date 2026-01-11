@@ -681,3 +681,72 @@ export interface ReminderSummary {
   by_type: Record<string, number>;
   by_priority: Record<string, number>;
 }
+
+// Report Types
+export interface HouseholdOverview {
+  member_count: number;
+  adult_count: number;
+  child_count: number;
+  property_count: number;
+  property_value: string;
+  mortgage_balance: string;
+  property_equity: string;
+  vehicle_count: number;
+  vehicle_value: string;
+  insurance_policy_count: number;
+  annual_premiums: string;
+  document_count: number;
+  expiring_doc_count: number;
+  currency: string;
+}
+
+export interface NetWorthBreakdown {
+  investments: string;
+  cash: string;
+  properties: string;
+  vehicles: string;
+  other_assets: string;
+  total_assets: string;
+  mortgages: string;
+  vehicle_finance: string;
+  total_liabilities: string;
+  net_worth: string;
+  currency: string;
+}
+
+export interface PolicyTypeSummary {
+  policy_type: string;
+  count: number;
+  total_coverage: string;
+  annual_premiums: string;
+}
+
+export interface InsuranceCoverageReport {
+  total_policies: number;
+  total_coverage: string;
+  annual_premiums: string;
+  by_type: PolicyTypeSummary[];
+  upcoming_renewals: number;
+  currency: string;
+}
+
+export interface AllocationCategory {
+  category: string;
+  value: string;
+  percentage: number;
+  items: number;
+}
+
+export interface AssetAllocationReport {
+  by_category: AllocationCategory[];
+  total: string;
+  currency: string;
+}
+
+export interface UpcomingEventsReport {
+  total_events: number;
+  overdue_events: number;
+  by_type: Record<string, number>;
+  next_seven_days: number;
+  next_thirty_days: number;
+}

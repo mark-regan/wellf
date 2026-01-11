@@ -20,6 +20,7 @@ import {
   FileCheck,
   FileText,
   Calendar,
+  BarChart3,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -38,6 +39,7 @@ const baseNavItems = [
   { path: '/insurance', label: 'Insurance', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
+  { path: '/insights', label: 'Insights', icon: BarChart3 },
 ];
 
 const adminNavItem = { path: '/admin', label: 'Admin', icon: Shield };
