@@ -9,6 +9,9 @@ type HouseholdOverview struct {
 	AdultCount      int `json:"adult_count"`
 	ChildCount      int `json:"child_count"`
 
+	// Pets
+	PetCount        int `json:"pet_count"`
+
 	// Properties
 	PropertyCount   int             `json:"property_count"`
 	PropertyValue   decimal.Decimal `json:"property_value"`

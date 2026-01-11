@@ -151,3 +151,11 @@ func (h *HealthHandler) DocumentCategories(w http.ResponseWriter, r *http.Reques
 func (h *HealthHandler) ReminderTypes(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, models.ValidReminderTypes())
 }
+
+func (h *HealthHandler) PetTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidPetTypes())
+}
+
+func (h *HealthHandler) PetGenders(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidPetGenders())
+}

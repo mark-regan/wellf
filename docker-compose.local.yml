@@ -1,0 +1,83 @@
+version: "3.8"
+
+# Local development docker-compose for testing
+# Usage: docker compose -f docker-compose.local.yml up -d
+
+services:
+  wellf-api:
+    image: ghcr.io/mark-regan/wellf-api:latest
+    container_name: wellf-api-local
+    ports:
+      - "4020:4020"
+    environment:
+      - DATABASE_URL=postgres://wellf:wellf_local_password@wellf-db:5432/wellf?sslmode=disable
+      - REDIS_URL=redis://wellf-redis:6379
+      - JWT_SECRET=local_dev_jwt_secret_change_in_production
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - YAHOO_CACHE_TTL=10m
+      - BASE_CURRENCY=GBP
+      - LOG_LEVEL=debug
+      - CORS_ORIGINS=http://localhost:3001
+      - ENV=development
+      # Paperless-ngx integration (optional)
+      - PAPERLESS_URL=${PAPERLESS_URL:-}
+      - PAPERLESS_API_KEY=${PAPERLESS_API_KEY:-}
+    depends_on:
+      wellf-db:
+        condition: service_healthy
+      wellf-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:4020/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  wellf-frontend:
+    image: ghcr.io/mark-regan/wellf-frontend:latest
+    container_name: wellf-frontend-local
+    ports:
+      - "3001:80"
+    depends_on:
+      - wellf-api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  wellf-db:
+    image: postgres:16-alpine
+    container_name: wellf-db-local
+    volumes:
+      - wellf-postgres-local:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=wellf
+      - POSTGRES_PASSWORD=wellf_local_password
+      - POSTGRES_DB=wellf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wellf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  wellf-redis:
+    image: redis:7-alpine
+    container_name: wellf-redis-local
+    command: redis-server --appendonly yes
+    volumes:
+      - wellf-redis-local:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  wellf-postgres-local:
+  wellf-redis-local:

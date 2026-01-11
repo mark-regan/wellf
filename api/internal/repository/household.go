@@ -382,6 +382,53 @@ func (r *HouseholdRepository) GetDefaultHousehold(ctx context.Context, userID uu
 	return &household, nil
 }
 
+// GetPaperlessConfig returns the Paperless configuration for a household
+func (r *HouseholdRepository) GetPaperlessConfig(ctx context.Context, householdID uuid.UUID) (*models.PaperlessConfig, error) {
+	query := `
+		SELECT paperless_url, paperless_api_token
+		FROM households
+		WHERE id = $1
+	`
+
+	var config models.PaperlessConfig
+	err := r.pool.QueryRow(ctx, query, householdID).Scan(
+		&config.PaperlessURL,
+		&config.PaperlessAPIToken,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrHouseholdNotFound
+		}
+		return nil, err
+	}
+
+	config.IsConfigured = config.PaperlessURL != nil && *config.PaperlessURL != "" &&
+		config.PaperlessAPIToken != nil && *config.PaperlessAPIToken != ""
+
+	return &config, nil
+}
+
+// UpdatePaperlessConfig updates the Paperless configuration for a household
+func (r *HouseholdRepository) UpdatePaperlessConfig(ctx context.Context, householdID uuid.UUID, paperlessURL, apiToken string) error {
+	query := `
+		UPDATE households
+		SET paperless_url = $2, paperless_api_token = $3, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.pool.Exec(ctx, query, householdID, paperlessURL, apiToken)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrHouseholdNotFound
+	}
+
+	return nil
+}
+
 // Helper function
 func stringOrEmpty(s *string) string {
 	if s == nil {

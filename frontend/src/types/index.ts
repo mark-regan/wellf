@@ -713,6 +713,7 @@ export interface HouseholdOverview {
   member_count: number;
   adult_count: number;
   child_count: number;
+  pet_count: number;
   property_count: number;
   property_value: string;
   mortgage_balance: string;
@@ -776,3 +777,18 @@ export interface UpcomingEventsReport {
   next_seven_days: number;
   next_thirty_days: number;
 }
+
+// Re-export Paperless types
+export type {
+  PaperlessConfig,
+  PaperlessDocument,
+  PaperlessNote,
+  PaperlessSearchResult,
+  PaperlessCorrespondent,
+  PaperlessDocumentType,
+  PaperlessTag,
+  DocumentLink,
+  DocumentLinkCategory,
+  CreateDocumentLinkRequest,
+  TestConnectionResponse,
+} from './paperless';

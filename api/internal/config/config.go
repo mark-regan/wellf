@@ -6,11 +6,17 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Yahoo    YahooConfig
+	Server    ServerConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	JWT       JWTConfig
+	Yahoo     YahooConfig
+	Paperless PaperlessConfig
+}
+
+type PaperlessConfig struct {
+	URL      string
+	APIToken string
 }
 
 type ServerConfig struct {
@@ -72,6 +78,10 @@ func Load() (*Config, error) {
 		},
 		Yahoo: YahooConfig{
 			CacheTTL: yahooCacheTTL,
+		},
+		Paperless: PaperlessConfig{
+			URL:      getEnv("PAPERLESS_URL", ""),
+			APIToken: getEnv("PAPERLESS_API_KEY", ""),
 		},
 	}, nil
 }

@@ -346,6 +346,9 @@ services:
       - LOG_LEVEL=info
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - ENV=production
+      # Paperless-ngx integration (optional)
+      - PAPERLESS_URL=${PAPERLESS_URL:-}
+      - PAPERLESS_API_KEY=${PAPERLESS_API_KEY:-}
     depends_on:
       wellf-db:
         condition: service_healthy

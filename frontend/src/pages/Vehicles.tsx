@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Collapsible, FormSection, FormRow, FormField } from '@/components/ui/collapsible';
 import { vehicleApi } from '@/api/vehicle';
 import { personApi } from '@/api/person';
 import { Vehicle, VehicleType, FuelType, ServiceType, VehicleServiceRecord, Person } from '@/types';
@@ -20,6 +22,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Fuel,
+  Info,
+  FileText,
+  Shield,
+  PoundSterling,
 } from 'lucide-react';
 
 const VEHICLE_TYPES: { value: VehicleType; label: string }[] = [
@@ -419,6 +425,8 @@ export function Vehicles() {
     );
   }
 
+  const showVehicleModal = showCreate || editingVehicle;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -441,213 +449,255 @@ export function Vehicles() {
       )}
 
       {/* Create/Edit Modal */}
-      {(showCreate || editingVehicle) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">
-                  {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
-                </h2>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                    {formError}
-                  </div>
-                )}
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">Name *</label>
-                    <Input
-                      placeholder="e.g. Family Car"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Vehicle Type *</label>
-                    <select
-                      value={formData.vehicle_type}
-                      onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value as VehicleType })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      {VEHICLE_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Make</label>
-                    <Input
-                      placeholder="e.g. Toyota"
-                      value={formData.make}
-                      onChange={(e) => setFormData({ ...formData, make: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Model</label>
-                    <Input
-                      placeholder="e.g. Corolla"
-                      value={formData.model}
-                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-5">
-                  <div>
-                    <label className="text-sm font-medium">Year</label>
-                    <Input
-                      type="number"
-                      placeholder="2020"
-                      value={formData.year}
-                      onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Registration</label>
-                    <Input
-                      placeholder="AB12 CDE"
-                      value={formData.registration}
-                      onChange={(e) => setFormData({ ...formData, registration: e.target.value.toUpperCase() })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Color</label>
-                    <Input
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Fuel Type</label>
-                    <select
-                      value={formData.fuel_type}
-                      onChange={(e) => setFormData({ ...formData, fuel_type: e.target.value as FuelType })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select...</option>
-                      {FUEL_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Mileage</label>
-                    <Input
-                      type="number"
-                      value={formData.mileage}
-                      onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">Purchase Date</label>
-                    <Input
-                      type="date"
-                      value={formData.purchase_date}
-                      onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Purchase Price</label>
-                    <Input
-                      type="number"
-                      value={formData.purchase_price}
-                      onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Current Value</label>
-                    <Input
-                      type="number"
-                      value={formData.current_value}
-                      onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Currency</label>
-                    <select
-                      value={formData.currency}
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="GBP">GBP</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">MOT Expiry</label>
-                    <Input
-                      type="date"
-                      value={formData.mot_expiry}
-                      onChange={(e) => setFormData({ ...formData, mot_expiry: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Tax Expiry</label>
-                    <Input
-                      type="date"
-                      value={formData.tax_expiry}
-                      onChange={(e) => setFormData({ ...formData, tax_expiry: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Insurance Expiry</label>
-                    <Input
-                      type="date"
-                      value={formData.insurance_expiry}
-                      onChange={(e) => setFormData({ ...formData, insurance_expiry: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Insurance Provider</label>
-                    <Input
-                      value={formData.insurance_provider}
-                      onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Notes</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
-                    placeholder="Additional notes..."
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : editingVehicle ? 'Save Changes' : 'Add Vehicle'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+      <Modal
+        isOpen={!!showVehicleModal}
+        onClose={resetForm}
+        title={editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
+        description={editingVehicle ? 'Update your vehicle information' : 'Add a new vehicle to your fleet'}
+        size="xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {formError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+              {formError}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* Basic Information */}
+          <FormSection
+            title="Basic Information"
+            icon={<Info className="h-4 w-4 text-muted-foreground" />}
+            description="Essential details about your vehicle"
+          >
+            <FormRow>
+              <FormField label="Nickname" htmlFor="vehicle-name" required hint="A friendly name for this vehicle">
+                <Input
+                  id="vehicle-name"
+                  placeholder="e.g., Family Car, Work Van"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </FormField>
+              <FormField label="Vehicle Type" htmlFor="vehicle-type" required>
+                <select
+                  id="vehicle-type"
+                  value={formData.vehicle_type}
+                  onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value as VehicleType })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {VEHICLE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </FormField>
+            </FormRow>
+            <FormRow>
+              <FormField label="Make" htmlFor="vehicle-make">
+                <Input
+                  id="vehicle-make"
+                  placeholder="e.g., Toyota, Ford, BMW"
+                  value={formData.make}
+                  onChange={(e) => setFormData({ ...formData, make: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Model" htmlFor="vehicle-model">
+                <Input
+                  id="vehicle-model"
+                  placeholder="e.g., Corolla, Focus, 3 Series"
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Year" htmlFor="vehicle-year">
+                <Input
+                  id="vehicle-year"
+                  type="number"
+                  placeholder="2020"
+                  value={formData.year}
+                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                />
+              </FormField>
+            </FormRow>
+          </FormSection>
+
+          {/* Vehicle Details */}
+          <Collapsible
+            title="Vehicle Details"
+            icon={<Car className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.registration || formData.color || formData.fuel_type || formData.mileage)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="Registration" htmlFor="vehicle-reg" hint="Number plate">
+                  <Input
+                    id="vehicle-reg"
+                    placeholder="AB12 CDE"
+                    value={formData.registration}
+                    onChange={(e) => setFormData({ ...formData, registration: e.target.value.toUpperCase() })}
+                  />
+                </FormField>
+                <FormField label="Color" htmlFor="vehicle-color">
+                  <Input
+                    id="vehicle-color"
+                    placeholder="e.g., Silver, Black"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+              <FormRow>
+                <FormField label="Fuel Type" htmlFor="vehicle-fuel">
+                  <select
+                    id="vehicle-fuel"
+                    value={formData.fuel_type}
+                    onChange={(e) => setFormData({ ...formData, fuel_type: e.target.value as FuelType })}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select...</option>
+                    {FUEL_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Current Mileage" htmlFor="vehicle-mileage">
+                  <Input
+                    id="vehicle-mileage"
+                    type="number"
+                    placeholder="50000"
+                    value={formData.mileage}
+                    onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+            </div>
+          </Collapsible>
+
+          {/* Financial Details */}
+          <Collapsible
+            title="Financial Details"
+            icon={<PoundSterling className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.purchase_date || formData.purchase_price || formData.current_value)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="Purchase Date" htmlFor="vehicle-purchase-date">
+                  <Input
+                    id="vehicle-purchase-date"
+                    type="date"
+                    value={formData.purchase_date}
+                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Currency" htmlFor="vehicle-currency">
+                  <select
+                    id="vehicle-currency"
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="GBP">GBP (£)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </FormField>
+              </FormRow>
+              <FormRow>
+                <FormField label="Purchase Price" htmlFor="vehicle-purchase-price">
+                  <Input
+                    id="vehicle-purchase-price"
+                    type="number"
+                    placeholder="15000"
+                    value={formData.purchase_price}
+                    onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Current Value" htmlFor="vehicle-current-value" hint="Estimated market value">
+                  <Input
+                    id="vehicle-current-value"
+                    type="number"
+                    placeholder="12000"
+                    value={formData.current_value}
+                    onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+            </div>
+          </Collapsible>
+
+          {/* Expiry Dates & Insurance */}
+          <Collapsible
+            title="Expiry Dates & Insurance"
+            icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.mot_expiry || formData.tax_expiry || formData.insurance_expiry)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="MOT Expiry" htmlFor="vehicle-mot">
+                  <Input
+                    id="vehicle-mot"
+                    type="date"
+                    value={formData.mot_expiry}
+                    onChange={(e) => setFormData({ ...formData, mot_expiry: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Tax Expiry" htmlFor="vehicle-tax">
+                  <Input
+                    id="vehicle-tax"
+                    type="date"
+                    value={formData.tax_expiry}
+                    onChange={(e) => setFormData({ ...formData, tax_expiry: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+              <FormRow>
+                <FormField label="Insurance Expiry" htmlFor="vehicle-insurance-expiry">
+                  <Input
+                    id="vehicle-insurance-expiry"
+                    type="date"
+                    value={formData.insurance_expiry}
+                    onChange={(e) => setFormData({ ...formData, insurance_expiry: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Insurance Provider" htmlFor="vehicle-insurance-provider">
+                  <Input
+                    id="vehicle-insurance-provider"
+                    placeholder="e.g., Admiral, Direct Line"
+                    value={formData.insurance_provider}
+                    onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+            </div>
+          </Collapsible>
+
+          {/* Notes */}
+          <Collapsible
+            title="Notes"
+            icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!formData.notes}
+          >
+            <FormField label="Additional Notes" htmlFor="vehicle-notes">
+              <textarea
+                id="vehicle-notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[100px] resize-y"
+                placeholder="Any additional information about this vehicle..."
+              />
+            </FormField>
+          </Collapsible>
+
+          <ModalFooter>
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : editingVehicle ? 'Save Changes' : 'Add Vehicle'}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation */}
       {deletingVehicle && (
@@ -677,145 +727,141 @@ export function Vehicles() {
       )}
 
       {/* Add User Modal */}
-      {showUserModal && userVehicle && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <CardTitle>Add Driver</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Add a driver to <strong>{userVehicle.name}</strong>.
-              </p>
-              <div>
-                <label className="text-sm font-medium">Person</label>
-                <select
-                  value={selectedPerson}
-                  onChange={(e) => setSelectedPerson(e.target.value)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select person...</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="primary_driver"
-                    checked={isPrimaryDriver}
-                    onChange={(e) => setIsPrimaryDriver(e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="primary_driver" className="text-sm">Primary Driver</label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="named_insurance"
-                    checked={isNamedOnInsurance}
-                    onChange={(e) => setIsNamedOnInsurance(e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="named_insurance" className="text-sm">Named on Insurance</label>
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowUserModal(false)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddUser} disabled={saving || !selectedPerson}>
-                  {saving ? 'Adding...' : 'Add Driver'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <Modal
+        isOpen={showUserModal && !!userVehicle}
+        onClose={() => setShowUserModal(false)}
+        title="Add Driver"
+        description={userVehicle ? `Add a driver to ${userVehicle.name}` : ''}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <FormField label="Person" htmlFor="driver-person" required>
+            <select
+              id="driver-person"
+              value={selectedPerson}
+              onChange={(e) => setSelectedPerson(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select person...</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.first_name} {p.last_name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="primary_driver"
+                checked={isPrimaryDriver}
+                onChange={(e) => setIsPrimaryDriver(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="primary_driver" className="text-sm">Primary Driver</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="named_insurance"
+                checked={isNamedOnInsurance}
+                onChange={(e) => setIsNamedOnInsurance(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="named_insurance" className="text-sm">Named on Insurance</label>
+            </div>
+          </div>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setShowUserModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddUser} disabled={saving || !selectedPerson}>
+              {saving ? 'Adding...' : 'Add Driver'}
+            </Button>
+          </ModalFooter>
         </div>
-      )}
+      </Modal>
 
       {/* Add Service Record Modal */}
-      {showServiceModal && serviceVehicle && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-lg mx-4">
-            <CardHeader>
-              <CardTitle>Add Service Record</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Service Type *</label>
-                  <select
-                    value={serviceFormData.service_type}
-                    onChange={(e) => setServiceFormData({ ...serviceFormData, service_type: e.target.value as ServiceType })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {SERVICE_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Date *</label>
-                  <Input
-                    type="date"
-                    value={serviceFormData.service_date}
-                    onChange={(e) => setServiceFormData({ ...serviceFormData, service_date: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Mileage</label>
-                  <Input
-                    type="number"
-                    value={serviceFormData.mileage}
-                    onChange={(e) => setServiceFormData({ ...serviceFormData, mileage: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Cost</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={serviceFormData.cost}
-                    onChange={(e) => setServiceFormData({ ...serviceFormData, cost: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Provider</label>
-                <Input
-                  value={serviceFormData.provider}
-                  onChange={(e) => setServiceFormData({ ...serviceFormData, provider: e.target.value })}
-                  placeholder="e.g. Kwik Fit"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <textarea
-                  value={serviceFormData.description}
-                  onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]"
-                  placeholder="What was done..."
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowServiceModal(false)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddServiceRecord} disabled={saving || !serviceFormData.service_date}>
-                  {saving ? 'Adding...' : 'Add Record'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <Modal
+        isOpen={showServiceModal && !!serviceVehicle}
+        onClose={() => setShowServiceModal(false)}
+        title="Add Service Record"
+        description={serviceVehicle ? `Record service for ${serviceVehicle.name}` : ''}
+        size="md"
+      >
+        <div className="space-y-4">
+          <FormRow>
+            <FormField label="Service Type" htmlFor="service-type" required>
+              <select
+                id="service-type"
+                value={serviceFormData.service_type}
+                onChange={(e) => setServiceFormData({ ...serviceFormData, service_type: e.target.value as ServiceType })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {SERVICE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Date" htmlFor="service-date" required>
+              <Input
+                id="service-date"
+                type="date"
+                value={serviceFormData.service_date}
+                onChange={(e) => setServiceFormData({ ...serviceFormData, service_date: e.target.value })}
+                required
+              />
+            </FormField>
+          </FormRow>
+          <FormRow>
+            <FormField label="Mileage" htmlFor="service-mileage">
+              <Input
+                id="service-mileage"
+                type="number"
+                value={serviceFormData.mileage}
+                onChange={(e) => setServiceFormData({ ...serviceFormData, mileage: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Cost" htmlFor="service-cost">
+              <Input
+                id="service-cost"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={serviceFormData.cost}
+                onChange={(e) => setServiceFormData({ ...serviceFormData, cost: e.target.value })}
+              />
+            </FormField>
+          </FormRow>
+          <FormField label="Provider" htmlFor="service-provider">
+            <Input
+              id="service-provider"
+              value={serviceFormData.provider}
+              onChange={(e) => setServiceFormData({ ...serviceFormData, provider: e.target.value })}
+              placeholder="e.g., Kwik Fit, Local Garage"
+            />
+          </FormField>
+          <FormField label="Description" htmlFor="service-description">
+            <textarea
+              id="service-description"
+              value={serviceFormData.description}
+              onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-y"
+              placeholder="What was done..."
+            />
+          </FormField>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setShowServiceModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddServiceRecord} disabled={saving || !serviceFormData.service_date}>
+              {saving ? 'Adding...' : 'Add Record'}
+            </Button>
+          </ModalFooter>
         </div>
-      )}
+      </Modal>
 
       {/* Vehicles List */}
       {vehicles.length === 0 ? (

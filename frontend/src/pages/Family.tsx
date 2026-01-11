@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Collapsible, FormSection, FormRow, FormField } from '@/components/ui/collapsible';
 import { useHouseholdStore } from '@/store/household';
 import { Person, Gender, RelationshipType } from '@/types';
 import {
@@ -17,6 +19,7 @@ import {
   X,
   UserPlus,
   Crown,
+  Info,
 } from 'lucide-react';
 
 const GENDERS: { value: Gender; label: string }[] = [
@@ -287,6 +290,8 @@ export function Family() {
     }
   };
 
+  const showPersonModal = showCreate || editingPerson;
+
   if (isLoading && !people.length) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -354,125 +359,136 @@ export function Family() {
       )}
 
       {/* Create/Edit Modal */}
-      {(showCreate || editingPerson) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">
-                  {editingPerson ? 'Edit Family Member' : 'Add Family Member'}
-                </h2>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                    {formError}
-                  </div>
-                )}
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="text-sm font-medium">First Name *</label>
-                    <Input
-                      placeholder="First name"
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Last Name</label>
-                    <Input
-                      placeholder="Last name"
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Nickname</label>
-                    <Input
-                      placeholder="Nickname"
-                      value={formData.nickname}
-                      onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="text-sm font-medium">Date of Birth</label>
-                    <Input
-                      type="date"
-                      value={formData.date_of_birth}
-                      onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Gender</label>
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value as Gender })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select...</option>
-                      {GENDERS.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2 pt-6">
-                    <input
-                      type="checkbox"
-                      id="primary"
-                      checked={formData.is_primary_account_holder}
-                      onChange={(e) => setFormData({ ...formData, is_primary_account_holder: e.target.checked })}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="primary" className="text-sm">Primary Account Holder</label>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">Email</label>
-                    <Input
-                      type="email"
-                      placeholder="email@example.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Phone</label>
-                    <Input
-                      type="tel"
-                      placeholder="+44 7700 900000"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : editingPerson ? 'Save Changes' : 'Add Member'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+      <Modal
+        isOpen={!!showPersonModal}
+        onClose={resetForm}
+        title={editingPerson ? 'Edit Family Member' : 'Add Family Member'}
+        description={editingPerson ? 'Update family member information' : 'Add a new member to your household'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {formError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+              {formError}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* Basic Information */}
+          <FormSection
+            title="Basic Information"
+            icon={<Info className="h-4 w-4 text-muted-foreground" />}
+            description="Name and identity"
+          >
+            <FormRow>
+              <FormField label="First Name" htmlFor="person-first-name" required>
+                <Input
+                  id="person-first-name"
+                  placeholder="First name"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  required
+                />
+              </FormField>
+              <FormField label="Last Name" htmlFor="person-last-name">
+                <Input
+                  id="person-last-name"
+                  placeholder="Last name"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Nickname" htmlFor="person-nickname">
+                <Input
+                  id="person-nickname"
+                  placeholder="Nickname"
+                  value={formData.nickname}
+                  onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                />
+              </FormField>
+            </FormRow>
+          </FormSection>
+
+          {/* Personal Details */}
+          <Collapsible
+            title="Personal Details"
+            icon={<User className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.date_of_birth || formData.gender || formData.is_primary_account_holder)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="Date of Birth" htmlFor="person-dob">
+                  <Input
+                    id="person-dob"
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Gender" htmlFor="person-gender">
+                  <select
+                    id="person-gender"
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as Gender })}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select...</option>
+                    {GENDERS.map((g) => (
+                      <option key={g.value} value={g.value}>{g.label}</option>
+                    ))}
+                  </select>
+                </FormField>
+              </FormRow>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="primary-account-holder"
+                  checked={formData.is_primary_account_holder}
+                  onChange={(e) => setFormData({ ...formData, is_primary_account_holder: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="primary-account-holder" className="text-sm">Primary Account Holder</label>
+              </div>
+            </div>
+          </Collapsible>
+
+          {/* Contact Information */}
+          <Collapsible
+            title="Contact Information"
+            icon={<Mail className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.email || formData.phone)}
+          >
+            <FormRow>
+              <FormField label="Email" htmlFor="person-email">
+                <Input
+                  id="person-email"
+                  type="email"
+                  placeholder="email@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Phone" htmlFor="person-phone">
+                <Input
+                  id="person-phone"
+                  type="tel"
+                  placeholder="+44 7700 900000"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </FormField>
+            </FormRow>
+          </Collapsible>
+
+          <ModalFooter>
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : editingPerson ? 'Save Changes' : 'Add Member'}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation */}
       {deletingPerson && (
@@ -502,63 +518,61 @@ export function Family() {
       )}
 
       {/* Add Relationship Modal */}
-      {showRelationshipModal && relationshipPerson && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <CardTitle>Add Relationship</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Define how <strong>{relationshipPerson.first_name}</strong> is related to another family member.
-              </p>
-              <div>
-                <label className="text-sm font-medium">Related Person</label>
-                <select
-                  value={selectedRelatedPerson}
-                  onChange={(e) => setSelectedRelatedPerson(e.target.value)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select person...</option>
-                  {people
-                    .filter(p => p.id !== relationshipPerson.id)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.first_name} {p.last_name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">
-                  {relationshipPerson.first_name} is the ___ of the selected person
-                </label>
-                <select
-                  value={selectedRelationshipType}
-                  onChange={(e) => setSelectedRelationshipType(e.target.value as RelationshipType)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select relationship...</option>
-                  {RELATIONSHIP_TYPES.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowRelationshipModal(false)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddRelationship}
-                  disabled={saving || !selectedRelatedPerson || !selectedRelationshipType}
-                >
-                  {saving ? 'Adding...' : 'Add Relationship'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <Modal
+        isOpen={showRelationshipModal && !!relationshipPerson}
+        onClose={() => setShowRelationshipModal(false)}
+        title="Add Relationship"
+        description={relationshipPerson ? `Define how ${relationshipPerson.first_name} is related to another family member` : ''}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <FormField label="Related Person" htmlFor="related-person" required>
+            <select
+              id="related-person"
+              value={selectedRelatedPerson}
+              onChange={(e) => setSelectedRelatedPerson(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select person...</option>
+              {people
+                .filter(p => p.id !== relationshipPerson?.id)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.first_name} {p.last_name}
+                  </option>
+                ))}
+            </select>
+          </FormField>
+          <FormField
+            label={`${relationshipPerson?.first_name || 'This person'} is the ___ of the selected person`}
+            htmlFor="relationship-type"
+            required
+          >
+            <select
+              id="relationship-type"
+              value={selectedRelationshipType}
+              onChange={(e) => setSelectedRelationshipType(e.target.value as RelationshipType)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select relationship...</option>
+              {RELATIONSHIP_TYPES.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </FormField>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setShowRelationshipModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddRelationship}
+              disabled={saving || !selectedRelatedPerson || !selectedRelationshipType}
+            >
+              {saving ? 'Adding...' : 'Add Relationship'}
+            </Button>
+          </ModalFooter>
         </div>
-      )}
+      </Modal>
 
       {/* Family Members List */}
       {people.length === 0 ? (

@@ -7,7 +7,8 @@ import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
 import { Theme } from '@/types';
-import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut, Building2, RotateCcw } from 'lucide-react';
+import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut, Building2, RotateCcw, Cloud } from 'lucide-react';
+import { PaperlessConfigForm } from '@/components/PaperlessConfigForm';
 import { assetApi } from '@/api/assets';
 import { AssetSearchResult, ProviderLists, PortfolioType } from '@/types';
 import { DEFAULT_PROVIDERS, PORTFOLIO_TYPE_LABELS, parseProviderLists, stringifyProviderLists } from '@/constants/providers';
@@ -49,13 +50,14 @@ const LOCALES = [
   { value: 'zh-CN', label: 'Chinese (Simplified)' },
 ];
 
-type Section = 'profile' | 'appearance' | 'financial' | 'notifications' | 'security' | 'watchlist' | 'providers';
+type Section = 'profile' | 'appearance' | 'financial' | 'notifications' | 'security' | 'watchlist' | 'providers' | 'integrations';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'financial', label: 'Financial', icon: DollarSign },
   { id: 'providers', label: 'Providers', icon: Building2 },
+  { id: 'integrations', label: 'Integrations', icon: Cloud },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'watchlist', label: 'Watchlist', icon: Star },
@@ -809,6 +811,24 @@ export function Settings() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Integrations Section */}
+        {activeSection === 'integrations' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Integrations</CardTitle>
+              <CardDescription>Connect external services to enhance your experience</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Paperless-ngx</h3>
+                  <PaperlessConfigForm />
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

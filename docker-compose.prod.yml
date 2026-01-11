@@ -17,6 +17,9 @@ services:
       - YAHOO_CACHE_TTL=${YAHOO_CACHE_TTL:-10m}
       - BASE_CURRENCY=${BASE_CURRENCY:-GBP}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Paperless-ngx integration (optional)
+      - PAPERLESS_URL=${PAPERLESS_URL:-}
+      - PAPERLESS_API_KEY=${PAPERLESS_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

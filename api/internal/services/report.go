@@ -20,6 +20,7 @@ type ReportService struct {
 	holdingRepo     *repository.HoldingRepository
 	cashRepo        *repository.CashAccountRepository
 	fixedAssetRepo  *repository.FixedAssetRepository
+	petRepo         *repository.PetRepository
 	reminderService *ReminderService
 }
 
@@ -33,6 +34,7 @@ func NewReportService(
 	holdingRepo *repository.HoldingRepository,
 	cashRepo *repository.CashAccountRepository,
 	fixedAssetRepo *repository.FixedAssetRepository,
+	petRepo *repository.PetRepository,
 	reminderService *ReminderService,
 ) *ReportService {
 	return &ReportService{
@@ -45,6 +47,7 @@ func NewReportService(
 		holdingRepo:     holdingRepo,
 		cashRepo:        cashRepo,
 		fixedAssetRepo:  fixedAssetRepo,
+		petRepo:         petRepo,
 		reminderService: reminderService,
 	}
 }
@@ -77,6 +80,12 @@ func (s *ReportService) GetHouseholdOverview(ctx context.Context, householdID uu
 				overview.AdultCount++
 			}
 		}
+	}
+
+	// Get pets
+	petCount, err := s.petRepo.CountByHouseholdID(ctx, householdID)
+	if err == nil {
+		overview.PetCount = petCount
 	}
 
 	// Get properties

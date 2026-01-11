@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Collapsible, FormSection, FormRow, FormField } from '@/components/ui/collapsible';
 import { portfolioApi } from '@/api/portfolios';
 import { Portfolio, PortfolioSummary, PortfolioMetadata, PortfolioType } from '@/types';
 import { useAuthStore } from '@/store/auth';
@@ -23,6 +25,8 @@ import {
   Landmark,
   TrendingUp,
   Home,
+  Info,
+  Building2,
 } from 'lucide-react';
 
 const PORTFOLIO_TYPES: { value: PortfolioType; label: string; description: string }[] = [
@@ -198,6 +202,7 @@ export function Portfolios() {
     setIsOtherProvider(false);
     setError(null);
     setShowCreate(false);
+    setEditingPortfolio(null);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -364,6 +369,11 @@ export function Portfolios() {
     return null;
   };
 
+  // Determine which modal to show
+  const showModal = showCreate || editingPortfolio;
+  const isEditing = !!editingPortfolio;
+  const currentType = editingPortfolio ? editingPortfolio.type as PortfolioType : newType;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -384,37 +394,51 @@ export function Portfolios() {
         </Button>
       </div>
 
-      {/* Create Portfolio Form */}
-      {showCreate && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Portfolio</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="space-y-4">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                  {error}
-                </div>
-              )}
+      {/* Create/Edit Portfolio Modal */}
+      <Modal
+        isOpen={!!showModal}
+        onClose={resetForm}
+        title={isEditing ? `Edit Portfolio: ${editingPortfolio?.name}` : 'Create New Portfolio'}
+        description={isEditing ? 'Update your portfolio settings' : 'Add a new investment portfolio'}
+        size="xl"
+      >
+        <form onSubmit={isEditing ? handleEdit : handleCreate} className="space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+              {error}
+            </div>
+          )}
 
-              {/* Basic Info */}
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
+          {/* Basic Information */}
+          <FormSection
+            title="Basic Information"
+            icon={<Info className="h-4 w-4 text-muted-foreground" />}
+            description="Essential portfolio details"
+          >
+            <FormRow>
+              <FormField label="Name" htmlFor="portfolio-name" required>
+                <Input
+                  id="portfolio-name"
+                  placeholder="e.g., Main ISA, Trading Account"
+                  value={newName}
+                  onChange={(e) => {
+                    setNewName(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  required
+                />
+              </FormField>
+              <FormField label="Type" htmlFor="portfolio-type" required hint={isEditing ? 'Cannot be changed' : undefined}>
+                {isEditing ? (
                   <Input
-                    placeholder="Portfolio name"
-                    value={newName}
-                    onChange={(e) => {
-                      setNewName(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    required
+                    id="portfolio-type"
+                    value={PORTFOLIO_TYPES.find(t => t.value === editingPortfolio?.type)?.label || editingPortfolio?.type}
+                    disabled
+                    className="bg-muted"
                   />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Type</label>
+                ) : (
                   <select
+                    id="portfolio-type"
                     value={newType}
                     onChange={(e) => {
                       const type = e.target.value as PortfolioType;
@@ -430,722 +454,383 @@ export function Portfolios() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Currency</label>
-                  <select
-                    value={newCurrency}
-                    onChange={(e) => setNewCurrency(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="GBP">GBP</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
-              </div>
+                )}
+              </FormField>
+              <FormField label="Currency" htmlFor="portfolio-currency">
+                <select
+                  id="portfolio-currency"
+                  value={newCurrency}
+                  onChange={(e) => setNewCurrency(e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="GBP">GBP (£)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                </select>
+              </FormField>
+            </FormRow>
+          </FormSection>
 
-              {/* Common Fields */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Provider</label>
-                  <select
-                    value={isOtherProvider ? 'OTHER' : (metadata.provider || '')}
-                    onChange={(e) => {
-                      if (e.target.value === 'OTHER') {
-                        setIsOtherProvider(true);
-                        updateMetadata('provider', '');
-                      } else {
-                        setIsOtherProvider(false);
-                        updateMetadata('provider', e.target.value);
-                      }
-                    }}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select provider...</option>
-                    {currentProviders.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                    <option value="OTHER">Other...</option>
-                  </select>
-                  {isOtherProvider && (
+          {/* Provider & Reference */}
+          <Collapsible
+            title="Provider & Reference"
+            icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={true}
+          >
+            <FormRow>
+              <FormField label="Provider" htmlFor="portfolio-provider" required>
+                <select
+                  id="portfolio-provider"
+                  value={isOtherProvider ? 'OTHER' : (metadata.provider || '')}
+                  onChange={(e) => {
+                    if (e.target.value === 'OTHER') {
+                      setIsOtherProvider(true);
+                      updateMetadata('provider', '');
+                    } else {
+                      setIsOtherProvider(false);
+                      updateMetadata('provider', e.target.value);
+                    }
+                  }}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select provider...</option>
+                  {(isEditing ? getProvidersForType(providerLists, editingPortfolio?.type || 'GIA') : currentProviders).map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                  <option value="OTHER">Other...</option>
+                </select>
+              </FormField>
+              <FormField label="Account Reference" htmlFor="portfolio-ref" hint="Account number or reference (optional)">
+                <Input
+                  id="portfolio-ref"
+                  placeholder="Account number or reference"
+                  value={metadata.account_reference || ''}
+                  onChange={(e) => updateMetadata('account_reference', e.target.value)}
+                />
+              </FormField>
+            </FormRow>
+            {isOtherProvider && (
+              <FormField label="Provider Name" htmlFor="portfolio-provider-other" required className="mt-4">
+                <Input
+                  id="portfolio-provider-other"
+                  placeholder="Enter provider name"
+                  value={metadata.provider || ''}
+                  onChange={(e) => updateMetadata('provider', e.target.value)}
+                />
+              </FormField>
+            )}
+          </Collapsible>
+
+          {/* ISA/JISA Details */}
+          {(currentType === 'ISA' || currentType === 'JISA') && (
+            <Collapsible
+              title={`${currentType} Details`}
+              icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={true}
+            >
+              <div className="space-y-4">
+                <FormRow>
+                  <FormField label="ISA Type" htmlFor="isa-type" required>
+                    <select
+                      id="isa-type"
+                      value={metadata.isa_type || 'STOCKS_AND_SHARES'}
+                      onChange={(e) => updateMetadata('isa_type', e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {ISA_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="Tax Year Opened" htmlFor="isa-tax-year">
                     <Input
-                      className="mt-2"
-                      placeholder="Enter provider name"
-                      value={metadata.provider || ''}
-                      onChange={(e) => updateMetadata('provider', e.target.value)}
+                      id="isa-tax-year"
+                      placeholder="e.g., 2024/25"
+                      value={metadata.tax_year || ''}
+                      onChange={(e) => updateMetadata('tax_year', e.target.value)}
                     />
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Account Reference (optional)</label>
-                  <Input
-                    placeholder="Account number or reference"
-                    value={metadata.account_reference || ''}
-                    onChange={(e) => updateMetadata('account_reference', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* ISA Specific */}
-              {(newType === 'ISA' || newType === 'JISA') && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">{newType} Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">ISA Type</label>
-                      <select
-                        value={metadata.isa_type || 'STOCKS_AND_SHARES'}
-                        onChange={(e) => updateMetadata('isa_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {ISA_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Tax Year Opened</label>
+                  </FormField>
+                </FormRow>
+                {currentType === 'JISA' && (
+                  <FormRow>
+                    <FormField label="Child's Name" htmlFor="jisa-child-name" required>
                       <Input
-                        placeholder="e.g., 2024/25"
-                        value={metadata.tax_year || ''}
-                        onChange={(e) => updateMetadata('tax_year', e.target.value)}
+                        id="jisa-child-name"
+                        placeholder="Child's full name"
+                        value={metadata.child_name || ''}
+                        onChange={(e) => updateMetadata('child_name', e.target.value)}
                       />
-                    </div>
-                  </div>
-                  {newType === 'JISA' && (
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div>
-                        <label className="text-sm font-medium">Child's Name</label>
-                        <Input
-                          placeholder="Child's full name"
-                          value={metadata.child_name || ''}
-                          onChange={(e) => updateMetadata('child_name', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Child's Date of Birth</label>
-                        <Input
-                          type="date"
-                          value={metadata.child_dob || ''}
-                          onChange={(e) => updateMetadata('child_dob', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Registered Contact</label>
-                        <Input
-                          placeholder="Parent/Guardian name"
-                          value={metadata.contact_name || ''}
-                          onChange={(e) => updateMetadata('contact_name', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {metadata.isa_type === 'CASH' && (
-                    <div className="w-48">
-                      <label className="text-sm font-medium">Interest Rate (%)</label>
+                    </FormField>
+                    <FormField label="Child's Date of Birth" htmlFor="jisa-child-dob" required>
                       <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="4.5"
-                        value={metadata.interest_rate || ''}
-                        onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* SIPP Specific */}
-              {newType === 'SIPP' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">SIPP Details</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="text-sm font-medium">Tax Relief Type</label>
-                      <select
-                        value={metadata.tax_relief_type || 'RELIEF_AT_SOURCE'}
-                        onChange={(e) => updateMetadata('tax_relief_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {TAX_RELIEF_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Target Retirement Age</label>
-                      <Input
-                        type="number"
-                        placeholder="65"
-                        value={metadata.target_retirement_age || ''}
-                        onChange={(e) => updateMetadata('target_retirement_age', parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Crystallised Amount</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={metadata.crystallised_amount || ''}
-                        onChange={(e) => updateMetadata('crystallised_amount', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* LISA Specific */}
-              {newType === 'LISA' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">LISA Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">Purpose</label>
-                      <select
-                        value={metadata.lisa_purpose || 'FIRST_HOME'}
-                        onChange={(e) => updateMetadata('lisa_purpose', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {LISA_PURPOSES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Tax Year Opened</label>
-                      <Input
-                        placeholder="e.g., 2024/25"
-                        value={metadata.tax_year || ''}
-                        onChange={(e) => updateMetadata('tax_year', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Crypto Specific */}
-              {newType === 'CRYPTO' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">Crypto Wallet Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">Wallet Type</label>
-                      <select
-                        value={metadata.wallet_type || 'EXCHANGE'}
-                        onChange={(e) => updateMetadata('wallet_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {CRYPTO_WALLET_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Exchange/Wallet Name</label>
-                      <Input
-                        placeholder="e.g., Coinbase, Ledger"
-                        value={metadata.wallet_name || ''}
-                        onChange={(e) => updateMetadata('wallet_name', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Savings Specific */}
-              {newType === 'SAVINGS' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">Savings Account Details</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="text-sm font-medium">Account Type</label>
-                      <select
-                        value={metadata.savings_type || 'EASY_ACCESS'}
-                        onChange={(e) => updateMetadata('savings_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {SAVINGS_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Interest Rate (%)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="4.5"
-                        value={metadata.interest_rate || ''}
-                        onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="fscs"
-                        checked={metadata.fscs_protected || false}
-                        onChange={(e) => updateMetadata('fscs_protected', e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor="fscs" className="text-sm">FSCS Protected</label>
-                    </div>
-                  </div>
-                  {metadata.savings_type === 'NOTICE' && (
-                    <div className="w-48">
-                      <label className="text-sm font-medium">Notice Period (days)</label>
-                      <Input
-                        type="number"
-                        placeholder="90"
-                        value={metadata.notice_period || ''}
-                        onChange={(e) => updateMetadata('notice_period', parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-                  )}
-                  {metadata.savings_type === 'FIXED_TERM' && (
-                    <div className="w-48">
-                      <label className="text-sm font-medium">Maturity Date</label>
-                      <Input
+                        id="jisa-child-dob"
                         type="date"
-                        value={metadata.maturity_date || ''}
-                        onChange={(e) => updateMetadata('maturity_date', e.target.value)}
+                        value={metadata.child_dob || ''}
+                        onChange={(e) => updateMetadata('child_dob', e.target.value)}
                       />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Cash Specific */}
-              {newType === 'CASH' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">Current Account Details</h4>
-                  <p className="text-sm text-muted-foreground">Use the Provider field above for the Bank Name</p>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="text-sm font-medium">Account Type</label>
-                      <select
-                        value={metadata.account_type || 'STANDARD'}
-                        onChange={(e) => updateMetadata('account_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {CASH_ACCOUNT_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Interest Rate (% optional)</label>
+                    </FormField>
+                    <FormField label="Registered Contact" htmlFor="jisa-contact" required>
                       <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.5"
-                        value={metadata.interest_rate || ''}
-                        onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
+                        id="jisa-contact"
+                        placeholder="Parent/Guardian name"
+                        value={metadata.contact_name || ''}
+                        onChange={(e) => updateMetadata('contact_name', e.target.value)}
                       />
-                    </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="fscs-cash"
-                        checked={metadata.fscs_protected || false}
-                        onChange={(e) => updateMetadata('fscs_protected', e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor="fscs-cash" className="text-sm">FSCS Protected</label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={creating || !isFormValid(newType, newName, metadata)}>
-                  {creating ? 'Creating...' : 'Create Portfolio'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Edit Portfolio Form */}
-      {editingPortfolio && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit Portfolio: {editingPortfolio.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleEdit} className="space-y-4">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                  {error}
-                </div>
-              )}
-
-              {/* Basic Info - Type is read-only */}
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <Input
-                    placeholder="Portfolio name"
-                    value={newName}
-                    onChange={(e) => {
-                      setNewName(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Type</label>
-                  <Input
-                    value={PORTFOLIO_TYPES.find(t => t.value === editingPortfolio.type)?.label || editingPortfolio.type}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Currency</label>
-                  <select
-                    value={newCurrency}
-                    onChange={(e) => setNewCurrency(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="GBP">GBP</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Common Fields */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Provider</label>
-                  <select
-                    value={isOtherProvider ? 'OTHER' : (metadata.provider || '')}
-                    onChange={(e) => {
-                      if (e.target.value === 'OTHER') {
-                        setIsOtherProvider(true);
-                        updateMetadata('provider', '');
-                      } else {
-                        setIsOtherProvider(false);
-                        updateMetadata('provider', e.target.value);
-                      }
-                    }}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select provider...</option>
-                    {getProvidersForType(providerLists, editingPortfolio.type).map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                    <option value="OTHER">Other...</option>
-                  </select>
-                  {isOtherProvider && (
+                    </FormField>
+                  </FormRow>
+                )}
+                {metadata.isa_type === 'CASH' && (
+                  <FormField label="Interest Rate (%)" htmlFor="isa-interest" required className="max-w-xs">
                     <Input
-                      className="mt-2"
-                      placeholder="Enter provider name"
-                      value={metadata.provider || ''}
-                      onChange={(e) => updateMetadata('provider', e.target.value)}
+                      id="isa-interest"
+                      type="number"
+                      step="0.01"
+                      placeholder="4.5"
+                      value={metadata.interest_rate || ''}
+                      onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
                     />
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Account Reference (optional)</label>
+                  </FormField>
+                )}
+              </div>
+            </Collapsible>
+          )}
+
+          {/* SIPP Details */}
+          {currentType === 'SIPP' && (
+            <Collapsible
+              title="SIPP Details"
+              icon={<Landmark className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={true}
+            >
+              <FormRow>
+                <FormField label="Tax Relief Type" htmlFor="sipp-tax-relief" required>
+                  <select
+                    id="sipp-tax-relief"
+                    value={metadata.tax_relief_type || 'RELIEF_AT_SOURCE'}
+                    onChange={(e) => updateMetadata('tax_relief_type', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {TAX_RELIEF_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Target Retirement Age" htmlFor="sipp-retirement">
                   <Input
-                    placeholder="Account number or reference"
-                    value={metadata.account_reference || ''}
-                    onChange={(e) => updateMetadata('account_reference', e.target.value)}
+                    id="sipp-retirement"
+                    type="number"
+                    placeholder="65"
+                    value={metadata.target_retirement_age || ''}
+                    onChange={(e) => updateMetadata('target_retirement_age', parseInt(e.target.value) || 0)}
                   />
+                </FormField>
+                <FormField label="Crystallised Amount" htmlFor="sipp-crystallised" hint="Amount already accessed">
+                  <Input
+                    id="sipp-crystallised"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={metadata.crystallised_amount || ''}
+                    onChange={(e) => updateMetadata('crystallised_amount', parseFloat(e.target.value) || 0)}
+                  />
+                </FormField>
+              </FormRow>
+            </Collapsible>
+          )}
+
+          {/* LISA Details */}
+          {currentType === 'LISA' && (
+            <Collapsible
+              title="LISA Details"
+              icon={<Home className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={true}
+            >
+              <FormRow>
+                <FormField label="Purpose" htmlFor="lisa-purpose" required>
+                  <select
+                    id="lisa-purpose"
+                    value={metadata.lisa_purpose || 'FIRST_HOME'}
+                    onChange={(e) => updateMetadata('lisa_purpose', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {LISA_PURPOSES.map((type) => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Tax Year Opened" htmlFor="lisa-tax-year">
+                  <Input
+                    id="lisa-tax-year"
+                    placeholder="e.g., 2024/25"
+                    value={metadata.tax_year || ''}
+                    onChange={(e) => updateMetadata('tax_year', e.target.value)}
+                  />
+                </FormField>
+              </FormRow>
+            </Collapsible>
+          )}
+
+          {/* Crypto Details */}
+          {currentType === 'CRYPTO' && (
+            <Collapsible
+              title="Crypto Wallet Details"
+              icon={<Bitcoin className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={true}
+            >
+              <FormRow>
+                <FormField label="Wallet Type" htmlFor="crypto-wallet-type" required>
+                  <select
+                    id="crypto-wallet-type"
+                    value={metadata.wallet_type || 'EXCHANGE'}
+                    onChange={(e) => updateMetadata('wallet_type', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {CRYPTO_WALLET_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Exchange/Wallet Name" htmlFor="crypto-wallet-name" required>
+                  <Input
+                    id="crypto-wallet-name"
+                    placeholder="e.g., Coinbase, Ledger"
+                    value={metadata.wallet_name || ''}
+                    onChange={(e) => updateMetadata('wallet_name', e.target.value)}
+                  />
+                </FormField>
+              </FormRow>
+            </Collapsible>
+          )}
+
+          {/* Savings Details */}
+          {currentType === 'SAVINGS' && (
+            <Collapsible
+              title="Savings Account Details"
+              icon={<PiggyBank className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={true}
+            >
+              <div className="space-y-4">
+                <FormRow>
+                  <FormField label="Account Type" htmlFor="savings-type" required>
+                    <select
+                      id="savings-type"
+                      value={metadata.savings_type || 'EASY_ACCESS'}
+                      onChange={(e) => updateMetadata('savings_type', e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {SAVINGS_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="Interest Rate (%)" htmlFor="savings-interest" required>
+                    <Input
+                      id="savings-interest"
+                      type="number"
+                      step="0.01"
+                      placeholder="4.5"
+                      value={metadata.interest_rate || ''}
+                      onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
+                    />
+                  </FormField>
+                </FormRow>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="savings-fscs"
+                    checked={metadata.fscs_protected || false}
+                    onChange={(e) => updateMetadata('fscs_protected', e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <label htmlFor="savings-fscs" className="text-sm">FSCS Protected (up to £85,000)</label>
+                </div>
+                {metadata.savings_type === 'NOTICE' && (
+                  <FormField label="Notice Period (days)" htmlFor="savings-notice" required className="max-w-xs">
+                    <Input
+                      id="savings-notice"
+                      type="number"
+                      placeholder="90"
+                      value={metadata.notice_period || ''}
+                      onChange={(e) => updateMetadata('notice_period', parseInt(e.target.value) || 0)}
+                    />
+                  </FormField>
+                )}
+                {metadata.savings_type === 'FIXED_TERM' && (
+                  <FormField label="Maturity Date" htmlFor="savings-maturity" required className="max-w-xs">
+                    <Input
+                      id="savings-maturity"
+                      type="date"
+                      value={metadata.maturity_date || ''}
+                      onChange={(e) => updateMetadata('maturity_date', e.target.value)}
+                    />
+                  </FormField>
+                )}
+              </div>
+            </Collapsible>
+          )}
+
+          {/* Cash Account Details */}
+          {currentType === 'CASH' && (
+            <Collapsible
+              title="Current Account Details"
+              icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={true}
+            >
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Use the Provider field above for the Bank Name</p>
+                <FormRow>
+                  <FormField label="Account Type" htmlFor="cash-type" required>
+                    <select
+                      id="cash-type"
+                      value={metadata.account_type || 'STANDARD'}
+                      onChange={(e) => updateMetadata('account_type', e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {CASH_ACCOUNT_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="Interest Rate (%)" htmlFor="cash-interest" hint="Optional">
+                    <Input
+                      id="cash-interest"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.5"
+                      value={metadata.interest_rate || ''}
+                      onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
+                    />
+                  </FormField>
+                </FormRow>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="cash-fscs"
+                    checked={metadata.fscs_protected || false}
+                    onChange={(e) => updateMetadata('fscs_protected', e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <label htmlFor="cash-fscs" className="text-sm">FSCS Protected (up to £85,000)</label>
                 </div>
               </div>
+            </Collapsible>
+          )}
 
-              {/* ISA Specific */}
-              {(editingPortfolio.type === 'ISA' || editingPortfolio.type === 'JISA') && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">{editingPortfolio.type} Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">ISA Type</label>
-                      <select
-                        value={metadata.isa_type || 'STOCKS_AND_SHARES'}
-                        onChange={(e) => updateMetadata('isa_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {ISA_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Tax Year Opened</label>
-                      <Input
-                        placeholder="e.g., 2024/25"
-                        value={metadata.tax_year || ''}
-                        onChange={(e) => updateMetadata('tax_year', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  {editingPortfolio.type === 'JISA' && (
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div>
-                        <label className="text-sm font-medium">Child's Name</label>
-                        <Input
-                          placeholder="Child's full name"
-                          value={metadata.child_name || ''}
-                          onChange={(e) => updateMetadata('child_name', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Child's Date of Birth</label>
-                        <Input
-                          type="date"
-                          value={metadata.child_dob || ''}
-                          onChange={(e) => updateMetadata('child_dob', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Registered Contact</label>
-                        <Input
-                          placeholder="Parent/Guardian name"
-                          value={metadata.contact_name || ''}
-                          onChange={(e) => updateMetadata('contact_name', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {metadata.isa_type === 'CASH' && (
-                    <div className="w-48">
-                      <label className="text-sm font-medium">Interest Rate (%)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="4.5"
-                        value={metadata.interest_rate || ''}
-                        onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* SIPP Specific */}
-              {editingPortfolio.type === 'SIPP' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">SIPP Details</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="text-sm font-medium">Tax Relief Type</label>
-                      <select
-                        value={metadata.tax_relief_type || 'RELIEF_AT_SOURCE'}
-                        onChange={(e) => updateMetadata('tax_relief_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {TAX_RELIEF_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Target Retirement Age</label>
-                      <Input
-                        type="number"
-                        placeholder="65"
-                        value={metadata.target_retirement_age || ''}
-                        onChange={(e) => updateMetadata('target_retirement_age', parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Crystallised Amount</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={metadata.crystallised_amount || ''}
-                        onChange={(e) => updateMetadata('crystallised_amount', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* LISA Specific */}
-              {editingPortfolio.type === 'LISA' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">LISA Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">Purpose</label>
-                      <select
-                        value={metadata.lisa_purpose || 'FIRST_HOME'}
-                        onChange={(e) => updateMetadata('lisa_purpose', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {LISA_PURPOSES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Tax Year Opened</label>
-                      <Input
-                        placeholder="e.g., 2024/25"
-                        value={metadata.tax_year || ''}
-                        onChange={(e) => updateMetadata('tax_year', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Crypto Specific */}
-              {editingPortfolio.type === 'CRYPTO' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">Crypto Wallet Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">Wallet Type</label>
-                      <select
-                        value={metadata.wallet_type || 'EXCHANGE'}
-                        onChange={(e) => updateMetadata('wallet_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {CRYPTO_WALLET_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Exchange/Wallet Name</label>
-                      <Input
-                        placeholder="e.g., Coinbase, Ledger"
-                        value={metadata.wallet_name || ''}
-                        onChange={(e) => updateMetadata('wallet_name', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Savings Specific */}
-              {editingPortfolio.type === 'SAVINGS' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">Savings Account Details</h4>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="text-sm font-medium">Account Type</label>
-                      <select
-                        value={metadata.savings_type || 'EASY_ACCESS'}
-                        onChange={(e) => updateMetadata('savings_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {SAVINGS_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Interest Rate (%)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="4.5"
-                        value={metadata.interest_rate || ''}
-                        onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="fscs-edit"
-                        checked={metadata.fscs_protected || false}
-                        onChange={(e) => updateMetadata('fscs_protected', e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor="fscs-edit" className="text-sm">FSCS Protected</label>
-                    </div>
-                  </div>
-                  {metadata.savings_type === 'NOTICE' && (
-                    <div className="w-48">
-                      <label className="text-sm font-medium">Notice Period (days)</label>
-                      <Input
-                        type="number"
-                        placeholder="90"
-                        value={metadata.notice_period || ''}
-                        onChange={(e) => updateMetadata('notice_period', parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-                  )}
-                  {metadata.savings_type === 'FIXED_TERM' && (
-                    <div className="w-48">
-                      <label className="text-sm font-medium">Maturity Date</label>
-                      <Input
-                        type="date"
-                        value={metadata.maturity_date || ''}
-                        onChange={(e) => updateMetadata('maturity_date', e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Cash Specific */}
-              {editingPortfolio.type === 'CASH' && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-                  <h4 className="font-medium">Current Account Details</h4>
-                  <p className="text-sm text-muted-foreground">Use the Provider field above for the Bank Name</p>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="text-sm font-medium">Account Type</label>
-                      <select
-                        value={metadata.account_type || 'STANDARD'}
-                        onChange={(e) => updateMetadata('account_type', e.target.value)}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        {CASH_ACCOUNT_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Interest Rate (% optional)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.5"
-                        value={metadata.interest_rate || ''}
-                        onChange={(e) => updateMetadata('interest_rate', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="fscs-cash-edit"
-                        checked={metadata.fscs_protected || false}
-                        onChange={(e) => updateMetadata('fscs_protected', e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor="fscs-cash-edit" className="text-sm">FSCS Protected</label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={saving || !isFormValid(editingPortfolio.type as PortfolioType, newName, metadata)}>
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button type="button" variant="outline" onClick={cancelEdit}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+          <ModalFooter>
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={(isEditing ? saving : creating) || !isFormValid(currentType, newName, metadata)}
+            >
+              {isEditing
+                ? (saving ? 'Saving...' : 'Save Changes')
+                : (creating ? 'Creating...' : 'Create Portfolio')}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation Dialog */}
       {deletingPortfolio && (

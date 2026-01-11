@@ -101,6 +101,8 @@ func main() {
 	vehicleRepo := repository.NewVehicleRepository(db.Pool)
 	insuranceRepo := repository.NewInsuranceRepository(db.Pool)
 	documentRepo := repository.NewDocumentRepository(db.Pool)
+	petRepo := repository.NewPetRepository(db.Pool)
+	documentLinkRepo := repository.NewDocumentLinkRepository(db.Pool)
 
 	// Initialize Yahoo client and service
 	yahooClient := yahoo.NewClient()
@@ -109,7 +111,7 @@ func main() {
 	// Initialize services
 	authService := services.NewAuthService(userRepo, portfolioRepo, jwtManager, v, tokenBlacklist)
 	reminderService := services.NewReminderService(documentRepo, vehicleRepo, insuranceRepo, propertyRepo)
-	reportService := services.NewReportService(personRepo, propertyRepo, vehicleRepo, insuranceRepo, documentRepo, portfolioRepo, holdingRepo, cashRepo, fixedAssetRepo, reminderService)
+	reportService := services.NewReportService(personRepo, propertyRepo, vehicleRepo, insuranceRepo, documentRepo, portfolioRepo, holdingRepo, cashRepo, fixedAssetRepo, petRepo, reminderService)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -128,8 +130,11 @@ func main() {
 	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo, householdRepo)
 	insuranceHandler := handlers.NewInsuranceHandler(insuranceRepo, householdRepo)
 	documentHandler := handlers.NewDocumentHandler(documentRepo, householdRepo)
+	petHandler := handlers.NewPetHandler(petRepo, householdRepo)
 	reminderHandler := handlers.NewReminderHandler(reminderService, householdRepo)
 	reportHandler := handlers.NewReportHandler(reportService, householdRepo, userRepo)
+	paperlessHandler := handlers.NewPaperlessHandler(cfg)
+	documentLinkHandler := handlers.NewDocumentLinkHandler(cfg, documentLinkRepo, householdRepo, personRepo, propertyRepo, vehicleRepo, insuranceRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -179,6 +184,8 @@ func main() {
 		r.Get("/config/insurance-claim-statuses", healthHandler.InsuranceClaimStatuses)
 		r.Get("/config/document-categories", healthHandler.DocumentCategories)
 		r.Get("/config/reminder-types", healthHandler.ReminderTypes)
+		r.Get("/config/pet-types", healthHandler.PetTypes)
+		r.Get("/config/pet-genders", healthHandler.PetGenders)
 
 		// Auth routes (public) with stricter rate limiting
 		r.Route("/auth", func(r chi.Router) {
@@ -328,6 +335,15 @@ func main() {
 				r.Delete("/{id}", documentHandler.Delete)
 			})
 
+			// Pets
+			r.Route("/pets", func(r chi.Router) {
+				r.Get("/", petHandler.List)
+				r.Post("/", petHandler.Create)
+				r.Get("/{id}", petHandler.Get)
+				r.Put("/{id}", petHandler.Update)
+				r.Delete("/{id}", petHandler.Delete)
+			})
+
 			// Reminders & Calendar
 			r.Route("/reminders", func(r chi.Router) {
 				r.Get("/", reminderHandler.GetReminders)
@@ -343,6 +359,33 @@ func main() {
 				r.Get("/asset-allocation", reportHandler.GetAssetAllocation)
 				r.Get("/upcoming-events", reportHandler.GetUpcomingEvents)
 			})
+
+			// Paperless Integration
+			r.Route("/paperless", func(r chi.Router) {
+				r.Get("/config", paperlessHandler.GetConfig)
+				r.Post("/config/test", paperlessHandler.TestConnection)
+				r.Get("/documents", paperlessHandler.SearchDocuments)
+				r.Get("/documents/{id}", paperlessHandler.GetDocument)
+				r.Get("/documents/{id}/thumb", paperlessHandler.ProxyThumbnail)
+				r.Get("/documents/{id}/preview", paperlessHandler.ProxyPreview)
+				r.Get("/documents/{id}/download", paperlessHandler.ProxyDownload)
+				r.Get("/correspondents", paperlessHandler.GetCorrespondents)
+				r.Get("/document-types", paperlessHandler.GetDocumentTypes)
+				r.Get("/tags", paperlessHandler.GetTags)
+			})
+
+			// Document Links (Paperless document references)
+			r.Route("/document-links", func(r chi.Router) {
+				r.Get("/", documentLinkHandler.List)
+				r.Post("/", documentLinkHandler.Create)
+				r.Delete("/{id}", documentLinkHandler.Delete)
+			})
+
+			// Add document links to existing entity routes
+			r.Get("/people/{id}/documents", documentLinkHandler.GetByPerson)
+			r.Get("/properties/{id}/documents", documentLinkHandler.GetByProperty)
+			r.Get("/vehicles/{id}/documents", documentLinkHandler.GetByVehicle)
+			r.Get("/insurance/{id}/documents", documentLinkHandler.GetByPolicy)
 
 			// Admin routes (requires admin privileges)
 			r.Route("/admin", func(r chi.Router) {

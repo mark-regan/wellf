@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Collapsible, FormSection, FormRow, FormField } from '@/components/ui/collapsible';
 import { useHouseholdStore } from '@/store/household';
 import { petApi } from '@/api/pet';
 import { insuranceApi } from '@/api/insurance';
@@ -18,6 +20,8 @@ import {
   Stethoscope,
   Shield,
   Hash,
+  Info,
+  FileText,
 } from 'lucide-react';
 
 const PET_TYPES: { value: PetType; label: string; emoji: string }[] = [
@@ -280,182 +284,193 @@ export default function Pets() {
       )}
 
       {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">
-                  {editingPet ? 'Edit Pet' : 'Add Pet'}
-                </h2>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                    {formError}
-                  </div>
-                )}
-
-                {/* Basic Info */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">Name *</label>
-                    <Input
-                      placeholder="Pet name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Type *</label>
-                    <select
-                      value={formData.pet_type}
-                      onChange={(e) => setFormData({ ...formData, pet_type: e.target.value as PetType })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      required
-                    >
-                      {PET_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.emoji} {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="text-sm font-medium">Breed</label>
-                    <Input
-                      placeholder="Breed"
-                      value={formData.breed}
-                      onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Date of Birth</label>
-                    <Input
-                      type="date"
-                      value={formData.date_of_birth}
-                      onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Gender</label>
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value as PetGender })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select...</option>
-                      {PET_GENDERS.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Microchip Number</label>
-                  <Input
-                    placeholder="e.g., 123456789012345"
-                    value={formData.microchip_number}
-                    onChange={(e) => setFormData({ ...formData, microchip_number: e.target.value })}
-                  />
-                </div>
-
-                {/* Vet Information */}
-                <div className="pt-4 border-t">
-                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Stethoscope className="h-4 w-4" /> Vet Information
-                  </h3>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium">Vet Name</label>
-                      <Input
-                        placeholder="Vet/Practice name"
-                        value={formData.vet_name}
-                        onChange={(e) => setFormData({ ...formData, vet_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Vet Phone</label>
-                      <Input
-                        placeholder="+44 1234 567890"
-                        value={formData.vet_phone}
-                        onChange={(e) => setFormData({ ...formData, vet_phone: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="text-sm font-medium">Vet Address</label>
-                    <Input
-                      placeholder="Vet address"
-                      value={formData.vet_address}
-                      onChange={(e) => setFormData({ ...formData, vet_address: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Insurance */}
-                <div className="pt-4 border-t">
-                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Shield className="h-4 w-4" /> Insurance
-                  </h3>
-                  <div>
-                    <label className="text-sm font-medium">Insurance Policy</label>
-                    <select
-                      value={formData.insurance_policy_id}
-                      onChange={(e) => setFormData({ ...formData, insurance_policy_id: e.target.value })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">No insurance</option>
-                      {policies.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.policy_name} ({p.provider})
-                        </option>
-                      ))}
-                    </select>
-                    {policies.length === 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        No pet insurance policies found. Add one in the Insurance section.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="text-sm font-medium">Notes</label>
-                  <textarea
-                    placeholder="Any additional notes..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-y"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : editingPet ? 'Save Changes' : 'Add Pet'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+      <Modal
+        isOpen={showModal}
+        onClose={resetForm}
+        title={editingPet ? 'Edit Pet' : 'Add Pet'}
+        description={editingPet ? 'Update your pet\'s information' : 'Add a new pet to your household'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {formError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+              {formError}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* Basic Information */}
+          <FormSection
+            title="Basic Information"
+            icon={<Info className="h-4 w-4 text-muted-foreground" />}
+            description="Essential details about your pet"
+          >
+            <FormRow>
+              <FormField label="Name" htmlFor="pet-name" required>
+                <Input
+                  id="pet-name"
+                  placeholder="e.g., Max, Bella, Whiskers"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </FormField>
+              <FormField label="Type" htmlFor="pet-type" required>
+                <select
+                  id="pet-type"
+                  value={formData.pet_type}
+                  onChange={(e) => setFormData({ ...formData, pet_type: e.target.value as PetType })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  required
+                >
+                  {PET_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.emoji} {t.label}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </FormRow>
+
+            <FormRow>
+              <FormField label="Breed" htmlFor="pet-breed">
+                <Input
+                  id="pet-breed"
+                  placeholder="e.g., Golden Retriever, Siamese"
+                  value={formData.breed}
+                  onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Date of Birth" htmlFor="pet-dob">
+                <Input
+                  id="pet-dob"
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Gender" htmlFor="pet-gender">
+                <select
+                  id="pet-gender"
+                  value={formData.gender}
+                  onChange={(e) => setFormData({ ...formData, gender: e.target.value as PetGender })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select...</option>
+                  {PET_GENDERS.map((g) => (
+                    <option key={g.value} value={g.value}>{g.label}</option>
+                  ))}
+                </select>
+              </FormField>
+            </FormRow>
+          </FormSection>
+
+          {/* Identification */}
+          <Collapsible
+            title="Identification"
+            icon={<Hash className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!formData.microchip_number}
+          >
+            <FormField label="Microchip Number" htmlFor="pet-microchip" hint="15-digit microchip identification number">
+              <Input
+                id="pet-microchip"
+                placeholder="e.g., 123456789012345"
+                value={formData.microchip_number}
+                onChange={(e) => setFormData({ ...formData, microchip_number: e.target.value })}
+              />
+            </FormField>
+          </Collapsible>
+
+          {/* Vet Information */}
+          <Collapsible
+            title="Veterinary Information"
+            icon={<Stethoscope className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.vet_name || formData.vet_phone || formData.vet_address)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="Vet/Practice Name" htmlFor="vet-name">
+                  <Input
+                    id="vet-name"
+                    placeholder="e.g., Happy Paws Veterinary"
+                    value={formData.vet_name}
+                    onChange={(e) => setFormData({ ...formData, vet_name: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Phone Number" htmlFor="vet-phone">
+                  <Input
+                    id="vet-phone"
+                    placeholder="+44 1234 567890"
+                    value={formData.vet_phone}
+                    onChange={(e) => setFormData({ ...formData, vet_phone: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+              <FormField label="Address" htmlFor="vet-address">
+                <Input
+                  id="vet-address"
+                  placeholder="Full address of the veterinary practice"
+                  value={formData.vet_address}
+                  onChange={(e) => setFormData({ ...formData, vet_address: e.target.value })}
+                />
+              </FormField>
+            </div>
+          </Collapsible>
+
+          {/* Insurance */}
+          <Collapsible
+            title="Insurance"
+            icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!formData.insurance_policy_id}
+          >
+            <FormField label="Insurance Policy" htmlFor="pet-insurance">
+              <select
+                id="pet-insurance"
+                value={formData.insurance_policy_id}
+                onChange={(e) => setFormData({ ...formData, insurance_policy_id: e.target.value })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">No insurance policy linked</option>
+                {policies.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.policy_name} ({p.provider})
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {policies.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                No pet insurance policies found. You can add one in the Insurance section.
+              </p>
+            )}
+          </Collapsible>
+
+          {/* Notes */}
+          <Collapsible
+            title="Notes"
+            icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!formData.notes}
+          >
+            <FormField label="Additional Notes" htmlFor="pet-notes">
+              <textarea
+                id="pet-notes"
+                placeholder="Any additional information about your pet (dietary requirements, allergies, medical conditions, etc.)"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-y"
+              />
+            </FormField>
+          </Collapsible>
+
+          <ModalFooter>
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : editingPet ? 'Save Changes' : 'Add Pet'}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       {deletingPet && (

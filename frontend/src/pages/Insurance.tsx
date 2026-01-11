@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Collapsible, FormSection, FormRow, FormField } from '@/components/ui/collapsible';
 import { insuranceApi } from '@/api/insurance';
 import { personApi } from '@/api/person';
 import { propertyApi } from '@/api/property';
 import { vehicleApi } from '@/api/vehicle';
+import { LinkedDocumentsList } from '@/components/LinkedDocumentsList';
 import {
   InsurancePolicy,
   InsurancePolicyType,
@@ -34,6 +37,10 @@ import {
   Heart,
   Plane,
   Briefcase,
+  Info,
+  PoundSterling,
+  Link,
+  Phone,
 } from 'lucide-react';
 
 const POLICY_TYPES: { value: InsurancePolicyType; label: string; icon: typeof Shield }[] = [
@@ -452,6 +459,8 @@ export function Insurance() {
     );
   }
 
+  const showPolicyModal = showCreate || editingPolicy;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -474,219 +483,293 @@ export function Insurance() {
       )}
 
       {/* Create/Edit Modal */}
-      {(showCreate || editingPolicy) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">
-                  {editingPolicy ? 'Edit Policy' : 'Add Policy'}
-                </h2>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                    {formError}
-                  </div>
-                )}
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">Policy Name *</label>
-                    <Input
-                      placeholder="e.g. Home Insurance 2024"
-                      value={formData.policy_name}
-                      onChange={(e) => setFormData({ ...formData, policy_name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Policy Type *</label>
-                    <select
-                      value={formData.policy_type}
-                      onChange={(e) => setFormData({ ...formData, policy_type: e.target.value as InsurancePolicyType })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      {POLICY_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Provider</label>
-                    <Input
-                      placeholder="e.g. Aviva"
-                      value={formData.provider}
-                      onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Policy Number</label>
-                    <Input
-                      value={formData.policy_number}
-                      onChange={(e) => setFormData({ ...formData, policy_number: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">Start Date</label>
-                    <Input
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">End Date</label>
-                    <Input
-                      type="date"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Renewal Date</label>
-                    <Input
-                      type="date"
-                      value={formData.renewal_date}
-                      onChange={(e) => setFormData({ ...formData, renewal_date: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 pt-6">
-                    <input
-                      type="checkbox"
-                      id="auto_renewal"
-                      checked={formData.auto_renewal}
-                      onChange={(e) => setFormData({ ...formData, auto_renewal: e.target.checked })}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="auto_renewal" className="text-sm">Auto-renewal</label>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">Premium Amount</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.premium_amount}
-                      onChange={(e) => setFormData({ ...formData, premium_amount: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Premium Frequency</label>
-                    <select
-                      value={formData.premium_frequency}
-                      onChange={(e) => setFormData({ ...formData, premium_frequency: e.target.value as PremiumFrequency })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select...</option>
-                      {PREMIUM_FREQUENCIES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Excess Amount</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.excess_amount}
-                      onChange={(e) => setFormData({ ...formData, excess_amount: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Cover Amount</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.cover_amount}
-                      onChange={(e) => setFormData({ ...formData, cover_amount: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <label className="text-sm font-medium">Link to Property</label>
-                    <select
-                      value={formData.property_id}
-                      onChange={(e) => setFormData({ ...formData, property_id: e.target.value })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">None</option>
-                      {properties.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Link to Vehicle</label>
-                    <select
-                      value={formData.vehicle_id}
-                      onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">None</option>
-                      {vehicles.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Broker Name</label>
-                    <Input
-                      value={formData.broker_name}
-                      onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Currency</label>
-                    <select
-                      value={formData.currency}
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="GBP">GBP</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Notes</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
-                    placeholder="Additional notes..."
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : editingPolicy ? 'Save Changes' : 'Add Policy'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+      <Modal
+        isOpen={!!showPolicyModal}
+        onClose={resetForm}
+        title={editingPolicy ? 'Edit Policy' : 'Add Policy'}
+        description={editingPolicy ? 'Update your insurance policy details' : 'Add a new insurance policy'}
+        size="xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {formError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+              {formError}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* Basic Information */}
+          <FormSection
+            title="Basic Information"
+            icon={<Info className="h-4 w-4 text-muted-foreground" />}
+            description="Essential policy details"
+          >
+            <FormRow>
+              <FormField label="Policy Name" htmlFor="policy-name" required>
+                <Input
+                  id="policy-name"
+                  placeholder="e.g., Home Insurance 2024"
+                  value={formData.policy_name}
+                  onChange={(e) => setFormData({ ...formData, policy_name: e.target.value })}
+                  required
+                />
+              </FormField>
+              <FormField label="Policy Type" htmlFor="policy-type" required>
+                <select
+                  id="policy-type"
+                  value={formData.policy_type}
+                  onChange={(e) => setFormData({ ...formData, policy_type: e.target.value as InsurancePolicyType })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {POLICY_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </FormField>
+            </FormRow>
+            <FormRow>
+              <FormField label="Provider" htmlFor="policy-provider" hint="Insurance company name">
+                <Input
+                  id="policy-provider"
+                  placeholder="e.g., Aviva, Admiral"
+                  value={formData.provider}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Policy Number" htmlFor="policy-number">
+                <Input
+                  id="policy-number"
+                  placeholder="Policy reference number"
+                  value={formData.policy_number}
+                  onChange={(e) => setFormData({ ...formData, policy_number: e.target.value })}
+                />
+              </FormField>
+            </FormRow>
+          </FormSection>
+
+          {/* Policy Dates */}
+          <Collapsible
+            title="Policy Dates"
+            icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.start_date || formData.end_date || formData.renewal_date)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="Start Date" htmlFor="policy-start">
+                  <Input
+                    id="policy-start"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="End Date" htmlFor="policy-end">
+                  <Input
+                    id="policy-end"
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Renewal Date" htmlFor="policy-renewal">
+                  <Input
+                    id="policy-renewal"
+                    type="date"
+                    value={formData.renewal_date}
+                    onChange={(e) => setFormData({ ...formData, renewal_date: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="auto_renewal"
+                  checked={formData.auto_renewal}
+                  onChange={(e) => setFormData({ ...formData, auto_renewal: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="auto_renewal" className="text-sm">Auto-renewal enabled</label>
+              </div>
+            </div>
+          </Collapsible>
+
+          {/* Premium & Coverage */}
+          <Collapsible
+            title="Premium & Coverage"
+            icon={<PoundSterling className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.premium_amount || formData.cover_amount || formData.excess_amount)}
+          >
+            <div className="space-y-4">
+              <FormRow>
+                <FormField label="Premium Amount" htmlFor="policy-premium">
+                  <Input
+                    id="policy-premium"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.premium_amount}
+                    onChange={(e) => setFormData({ ...formData, premium_amount: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Premium Frequency" htmlFor="policy-frequency">
+                  <select
+                    id="policy-frequency"
+                    value={formData.premium_frequency}
+                    onChange={(e) => setFormData({ ...formData, premium_frequency: e.target.value as PremiumFrequency })}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select...</option>
+                    {PREMIUM_FREQUENCIES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Currency" htmlFor="policy-currency">
+                  <select
+                    id="policy-currency"
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="GBP">GBP (£)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </FormField>
+              </FormRow>
+              <FormRow>
+                <FormField label="Cover Amount" htmlFor="policy-cover" hint="Maximum payout amount">
+                  <Input
+                    id="policy-cover"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.cover_amount}
+                    onChange={(e) => setFormData({ ...formData, cover_amount: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Excess Amount" htmlFor="policy-excess" hint="Amount you pay per claim">
+                  <Input
+                    id="policy-excess"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.excess_amount}
+                    onChange={(e) => setFormData({ ...formData, excess_amount: e.target.value })}
+                  />
+                </FormField>
+              </FormRow>
+            </div>
+          </Collapsible>
+
+          {/* Linked Assets */}
+          <Collapsible
+            title="Linked Assets"
+            icon={<Link className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.property_id || formData.vehicle_id)}
+          >
+            <FormRow>
+              <FormField label="Link to Property" htmlFor="policy-property">
+                <select
+                  id="policy-property"
+                  value={formData.property_id}
+                  onChange={(e) => setFormData({ ...formData, property_id: e.target.value })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">None</option>
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label="Link to Vehicle" htmlFor="policy-vehicle">
+                <select
+                  id="policy-vehicle"
+                  value={formData.vehicle_id}
+                  onChange={(e) => setFormData({ ...formData, vehicle_id: e.target.value })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">None</option>
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </FormField>
+            </FormRow>
+          </Collapsible>
+
+          {/* Broker Information */}
+          <Collapsible
+            title="Broker Information"
+            icon={<Phone className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!(formData.broker_name || formData.broker_phone || formData.broker_email)}
+          >
+            <FormRow>
+              <FormField label="Broker Name" htmlFor="broker-name">
+                <Input
+                  id="broker-name"
+                  placeholder="Name of broker or agent"
+                  value={formData.broker_name}
+                  onChange={(e) => setFormData({ ...formData, broker_name: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Phone" htmlFor="broker-phone">
+                <Input
+                  id="broker-phone"
+                  placeholder="+44 1234 567890"
+                  value={formData.broker_phone}
+                  onChange={(e) => setFormData({ ...formData, broker_phone: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Email" htmlFor="broker-email">
+                <Input
+                  id="broker-email"
+                  type="email"
+                  placeholder="broker@example.com"
+                  value={formData.broker_email}
+                  onChange={(e) => setFormData({ ...formData, broker_email: e.target.value })}
+                />
+              </FormField>
+            </FormRow>
+          </Collapsible>
+
+          {/* Notes */}
+          <Collapsible
+            title="Notes"
+            icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+            defaultOpen={!!formData.notes}
+          >
+            <FormField label="Additional Notes" htmlFor="policy-notes">
+              <textarea
+                id="policy-notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[100px] resize-y"
+                placeholder="Any additional information about this policy..."
+              />
+            </FormField>
+          </Collapsible>
+
+          {/* Linked Documents - only shown when editing an existing policy */}
+          {editingPolicy && (
+            <Collapsible
+              title="Linked Documents"
+              icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+              defaultOpen={false}
+            >
+              <LinkedDocumentsList entityType="policy" entityId={editingPolicy.id} category="INSURANCE" />
+            </Collapsible>
+          )}
+
+          <ModalFooter>
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : editingPolicy ? 'Save Changes' : 'Add Policy'}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation */}
       {deletingPolicy && (
@@ -716,148 +799,146 @@ export function Insurance() {
       )}
 
       {/* Add Covered Person Modal */}
-      {showCoveredModal && coveredPolicy && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <CardTitle>Add Covered Person</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Add a person covered by <strong>{coveredPolicy.policy_name}</strong>.
-              </p>
-              <div>
-                <label className="text-sm font-medium">Person</label>
-                <select
-                  value={selectedPerson}
-                  onChange={(e) => setSelectedPerson(e.target.value)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select person...</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Coverage Type</label>
-                <select
-                  value={coverageType}
-                  onChange={(e) => setCoverageType(e.target.value as CoverageType)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {COVERAGE_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowCoveredModal(false)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddCovered} disabled={saving || !selectedPerson}>
-                  {saving ? 'Adding...' : 'Add Person'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <Modal
+        isOpen={showCoveredModal && !!coveredPolicy}
+        onClose={() => setShowCoveredModal(false)}
+        title="Add Covered Person"
+        description={coveredPolicy ? `Add a person covered by ${coveredPolicy.policy_name}` : ''}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <FormField label="Person" htmlFor="covered-person" required>
+            <select
+              id="covered-person"
+              value={selectedPerson}
+              onChange={(e) => setSelectedPerson(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select person...</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.first_name} {p.last_name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Coverage Type" htmlFor="coverage-type">
+            <select
+              id="coverage-type"
+              value={coverageType}
+              onChange={(e) => setCoverageType(e.target.value as CoverageType)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {COVERAGE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </FormField>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setShowCoveredModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCovered} disabled={saving || !selectedPerson}>
+              {saving ? 'Adding...' : 'Add Person'}
+            </Button>
+          </ModalFooter>
         </div>
-      )}
+      </Modal>
 
       {/* Add Claim Modal */}
-      {showClaimModal && claimPolicy && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-lg mx-4">
-            <CardHeader>
-              <CardTitle>Add Claim</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Claim Date *</label>
-                  <Input
-                    type="date"
-                    value={claimFormData.claim_date}
-                    onChange={(e) => setClaimFormData({ ...claimFormData, claim_date: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Incident Date</label>
-                  <Input
-                    type="date"
-                    value={claimFormData.incident_date}
-                    onChange={(e) => setClaimFormData({ ...claimFormData, incident_date: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Claim Reference</label>
-                  <Input
-                    value={claimFormData.claim_reference}
-                    onChange={(e) => setClaimFormData({ ...claimFormData, claim_reference: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Claim Type</label>
-                  <select
-                    value={claimFormData.claim_type}
-                    onChange={(e) => setClaimFormData({ ...claimFormData, claim_type: e.target.value as InsuranceClaimType })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select...</option>
-                    {CLAIM_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Claim Amount</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={claimFormData.claim_amount}
-                    onChange={(e) => setClaimFormData({ ...claimFormData, claim_amount: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Status</label>
-                  <select
-                    value={claimFormData.status}
-                    onChange={(e) => setClaimFormData({ ...claimFormData, status: e.target.value as InsuranceClaimStatus })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {CLAIM_STATUSES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <textarea
-                  value={claimFormData.description}
-                  onChange={(e) => setClaimFormData({ ...claimFormData, description: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]"
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowClaimModal(false)} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddClaim} disabled={saving || !claimFormData.claim_date}>
-                  {saving ? 'Adding...' : 'Add Claim'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <Modal
+        isOpen={showClaimModal && !!claimPolicy}
+        onClose={() => setShowClaimModal(false)}
+        title="Add Claim"
+        description={claimPolicy ? `Record a claim for ${claimPolicy.policy_name}` : ''}
+        size="md"
+      >
+        <div className="space-y-4">
+          <FormRow>
+            <FormField label="Claim Date" htmlFor="claim-date" required>
+              <Input
+                id="claim-date"
+                type="date"
+                value={claimFormData.claim_date}
+                onChange={(e) => setClaimFormData({ ...claimFormData, claim_date: e.target.value })}
+                required
+              />
+            </FormField>
+            <FormField label="Incident Date" htmlFor="claim-incident">
+              <Input
+                id="claim-incident"
+                type="date"
+                value={claimFormData.incident_date}
+                onChange={(e) => setClaimFormData({ ...claimFormData, incident_date: e.target.value })}
+              />
+            </FormField>
+          </FormRow>
+          <FormRow>
+            <FormField label="Claim Reference" htmlFor="claim-ref">
+              <Input
+                id="claim-ref"
+                placeholder="Reference number"
+                value={claimFormData.claim_reference}
+                onChange={(e) => setClaimFormData({ ...claimFormData, claim_reference: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Claim Type" htmlFor="claim-type">
+              <select
+                id="claim-type"
+                value={claimFormData.claim_type}
+                onChange={(e) => setClaimFormData({ ...claimFormData, claim_type: e.target.value as InsuranceClaimType })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select...</option>
+                {CLAIM_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </FormField>
+          </FormRow>
+          <FormRow>
+            <FormField label="Claim Amount" htmlFor="claim-amount">
+              <Input
+                id="claim-amount"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={claimFormData.claim_amount}
+                onChange={(e) => setClaimFormData({ ...claimFormData, claim_amount: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Status" htmlFor="claim-status">
+              <select
+                id="claim-status"
+                value={claimFormData.status}
+                onChange={(e) => setClaimFormData({ ...claimFormData, status: e.target.value as InsuranceClaimStatus })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {CLAIM_STATUSES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </FormField>
+          </FormRow>
+          <FormField label="Description" htmlFor="claim-description">
+            <textarea
+              id="claim-description"
+              value={claimFormData.description}
+              onChange={(e) => setClaimFormData({ ...claimFormData, description: e.target.value })}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-y"
+              placeholder="Describe what happened..."
+            />
+          </FormField>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setShowClaimModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddClaim} disabled={saving || !claimFormData.claim_date}>
+              {saving ? 'Adding...' : 'Add Claim'}
+            </Button>
+          </ModalFooter>
         </div>
-      )}
+      </Modal>
 
       {/* Policies List */}
       {policies.length === 0 ? (
