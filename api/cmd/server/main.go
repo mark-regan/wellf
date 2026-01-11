@@ -108,6 +108,7 @@ func main() {
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, portfolioRepo, jwtManager, v, tokenBlacklist)
+	reminderService := services.NewReminderService(documentRepo, vehicleRepo, insuranceRepo, propertyRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -126,6 +127,7 @@ func main() {
 	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo, householdRepo)
 	insuranceHandler := handlers.NewInsuranceHandler(insuranceRepo, householdRepo)
 	documentHandler := handlers.NewDocumentHandler(documentRepo, householdRepo)
+	reminderHandler := handlers.NewReminderHandler(reminderService, householdRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -174,6 +176,7 @@ func main() {
 		r.Get("/config/insurance-claim-types", healthHandler.InsuranceClaimTypes)
 		r.Get("/config/insurance-claim-statuses", healthHandler.InsuranceClaimStatuses)
 		r.Get("/config/document-categories", healthHandler.DocumentCategories)
+		r.Get("/config/reminder-types", healthHandler.ReminderTypes)
 
 		// Auth routes (public) with stricter rate limiting
 		r.Route("/auth", func(r chi.Router) {
@@ -321,6 +324,13 @@ func main() {
 				r.Get("/{id}", documentHandler.Get)
 				r.Put("/{id}", documentHandler.Update)
 				r.Delete("/{id}", documentHandler.Delete)
+			})
+
+			// Reminders & Calendar
+			r.Route("/reminders", func(r chi.Router) {
+				r.Get("/", reminderHandler.GetReminders)
+				r.Get("/summary", reminderHandler.GetReminderSummary)
+				r.Get("/calendar", reminderHandler.GetCalendarEvents)
 			})
 
 			// Admin routes (requires admin privileges)

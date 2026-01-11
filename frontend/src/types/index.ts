@@ -633,3 +633,51 @@ export interface Document {
   vehicle?: Vehicle;
   insurance_policy?: InsurancePolicy;
 }
+
+// Reminder Types
+export type ReminderType =
+  | 'DOCUMENT_EXPIRY'
+  | 'VEHICLE_MOT'
+  | 'VEHICLE_TAX'
+  | 'VEHICLE_INSURANCE'
+  | 'VEHICLE_SERVICE'
+  | 'INSURANCE_RENEWAL'
+  | 'MORTGAGE_END';
+
+export type ReminderPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type EntityType = 'document' | 'vehicle' | 'insurance' | 'property';
+
+export interface Reminder {
+  id: string;
+  type: ReminderType;
+  title: string;
+  description?: string;
+  due_date: string;
+  days_until: number;
+  priority: ReminderPriority;
+  is_overdue: boolean;
+  entity_id: string;
+  entity_type: EntityType;
+  entity_name: string;
+  category?: string;
+  url?: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  date: string;
+  type: ReminderType;
+  priority: ReminderPriority;
+  entity_id: string;
+  entity_type: EntityType;
+}
+
+export interface ReminderSummary {
+  total_count: number;
+  overdue_count: number;
+  urgent_count: number;
+  by_type: Record<string, number>;
+  by_priority: Record<string, number>;
+}

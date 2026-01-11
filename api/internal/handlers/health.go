@@ -147,3 +147,7 @@ func (h *HealthHandler) InsuranceClaimStatuses(w http.ResponseWriter, r *http.Re
 func (h *HealthHandler) DocumentCategories(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, models.ValidDocumentCategories())
 }
+
+func (h *HealthHandler) ReminderTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidReminderTypes())
+}

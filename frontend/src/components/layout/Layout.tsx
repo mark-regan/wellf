@@ -19,6 +19,7 @@ import {
   Car,
   FileCheck,
   FileText,
+  Calendar,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -36,6 +37,7 @@ const baseNavItems = [
   { path: '/vehicles', label: 'Vehicles', icon: Car },
   { path: '/insurance', label: 'Insurance', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
+  { path: '/calendar', label: 'Calendar', icon: Calendar },
 ];
 
 const adminNavItem = { path: '/admin', label: 'Admin', icon: Shield };
