@@ -61,17 +61,16 @@ func (s *ReportService) GetHouseholdOverview(ctx context.Context, householdID uu
 		overview.MemberCount = len(people)
 		now := time.Now()
 		for _, p := range people {
-			if p.DateOfBirth != nil && *p.DateOfBirth != "" {
-				if dob, err := time.Parse("2006-01-02", *p.DateOfBirth); err == nil {
-					age := now.Year() - dob.Year()
-					if now.YearDay() < dob.YearDay() {
-						age--
-					}
-					if age >= 18 {
-						overview.AdultCount++
-					} else {
-						overview.ChildCount++
-					}
+			if p.DateOfBirth != nil {
+				dob := *p.DateOfBirth
+				age := now.Year() - dob.Year()
+				if now.YearDay() < dob.YearDay() {
+					age--
+				}
+				if age >= 18 {
+					overview.AdultCount++
+				} else {
+					overview.ChildCount++
 				}
 			} else {
 				// Assume adult if DOB not set
@@ -86,12 +85,10 @@ func (s *ReportService) GetHouseholdOverview(ctx context.Context, householdID uu
 		overview.PropertyCount = len(properties)
 		for _, p := range properties {
 			if p.CurrentValue != nil {
-				val := decimal.NewFromFloat(*p.CurrentValue)
-				overview.PropertyValue = overview.PropertyValue.Add(val)
+				overview.PropertyValue = overview.PropertyValue.Add(*p.CurrentValue)
 			}
 			if p.MortgageBalance != nil {
-				bal := decimal.NewFromFloat(*p.MortgageBalance)
-				overview.MortgageBalance = overview.MortgageBalance.Add(bal)
+				overview.MortgageBalance = overview.MortgageBalance.Add(*p.MortgageBalance)
 			}
 		}
 		overview.PropertyEquity = overview.PropertyValue.Sub(overview.MortgageBalance)
@@ -103,8 +100,7 @@ func (s *ReportService) GetHouseholdOverview(ctx context.Context, householdID uu
 		overview.VehicleCount = len(vehicles)
 		for _, v := range vehicles {
 			if v.CurrentValue != nil {
-				val := decimal.NewFromFloat(*v.CurrentValue)
-				overview.VehicleValue = overview.VehicleValue.Add(val)
+				overview.VehicleValue = overview.VehicleValue.Add(*v.CurrentValue)
 			}
 		}
 	}
@@ -115,8 +111,7 @@ func (s *ReportService) GetHouseholdOverview(ctx context.Context, householdID uu
 		overview.InsurancePolicyCount = len(policies)
 		for _, p := range policies {
 			if p.PremiumAmount != nil && p.PremiumFrequency != nil {
-				premium := decimal.NewFromFloat(*p.PremiumAmount)
-				annual := s.annualizePremium(premium, *p.PremiumFrequency)
+				annual := s.annualizePremium(*p.PremiumAmount, *p.PremiumFrequency)
 				overview.AnnualPremiums = overview.AnnualPremiums.Add(annual)
 			}
 		}
@@ -144,10 +139,10 @@ func (s *ReportService) GetNetWorthBreakdown(ctx context.Context, householdID uu
 	}
 
 	// Get investment portfolios value
-	portfolios, err := s.portfolioRepo.ListByUserID(ctx, userID)
+	portfolios, err := s.portfolioRepo.GetByUserID(ctx, userID)
 	if err == nil {
 		for _, p := range portfolios {
-			holdings, err := s.holdingRepo.ListByPortfolioID(ctx, p.ID)
+			holdings, err := s.holdingRepo.GetByPortfolioID(ctx, p.ID)
 			if err == nil {
 				for _, h := range holdings {
 					val := decimal.NewFromFloat(h.Quantity).Mul(decimal.NewFromFloat(h.AverageCost))
@@ -158,10 +153,10 @@ func (s *ReportService) GetNetWorthBreakdown(ctx context.Context, householdID uu
 	}
 
 	// Get cash accounts
-	cashAccounts, err := s.cashRepo.GetAllByUserID(ctx, userID)
+	cashAccounts, err := s.cashRepo.GetByUserID(ctx, userID)
 	if err == nil {
 		for _, c := range cashAccounts {
-			breakdown.Cash = breakdown.Cash.Add(c.Balance)
+			breakdown.Cash = breakdown.Cash.Add(decimal.NewFromFloat(c.Balance))
 		}
 	}
 
@@ -170,10 +165,10 @@ func (s *ReportService) GetNetWorthBreakdown(ctx context.Context, householdID uu
 	if err == nil {
 		for _, p := range properties {
 			if p.CurrentValue != nil {
-				breakdown.Properties = breakdown.Properties.Add(decimal.NewFromFloat(*p.CurrentValue))
+				breakdown.Properties = breakdown.Properties.Add(*p.CurrentValue)
 			}
 			if p.MortgageBalance != nil {
-				breakdown.Mortgages = breakdown.Mortgages.Add(decimal.NewFromFloat(*p.MortgageBalance))
+				breakdown.Mortgages = breakdown.Mortgages.Add(*p.MortgageBalance)
 			}
 		}
 	}
@@ -183,19 +178,19 @@ func (s *ReportService) GetNetWorthBreakdown(ctx context.Context, householdID uu
 	if err == nil {
 		for _, v := range vehicles {
 			if v.CurrentValue != nil {
-				breakdown.Vehicles = breakdown.Vehicles.Add(decimal.NewFromFloat(*v.CurrentValue))
+				breakdown.Vehicles = breakdown.Vehicles.Add(*v.CurrentValue)
 			}
 			if v.FinanceBalance != nil {
-				breakdown.VehicleFinance = breakdown.VehicleFinance.Add(decimal.NewFromFloat(*v.FinanceBalance))
+				breakdown.VehicleFinance = breakdown.VehicleFinance.Add(*v.FinanceBalance)
 			}
 		}
 	}
 
 	// Get fixed assets
-	fixedAssets, err := s.fixedAssetRepo.GetAllByUserID(ctx, userID)
+	fixedAssets, err := s.fixedAssetRepo.GetByUserID(ctx, userID)
 	if err == nil {
 		for _, a := range fixedAssets {
-			breakdown.OtherAssets = breakdown.OtherAssets.Add(a.CurrentValue)
+			breakdown.OtherAssets = breakdown.OtherAssets.Add(decimal.NewFromFloat(a.CurrentValue))
 		}
 	}
 
@@ -230,11 +225,10 @@ func (s *ReportService) GetInsuranceCoverage(ctx context.Context, householdID uu
 	typeMap := make(map[string]*models.PolicyTypeSummary)
 	for _, p := range policies {
 		if p.CoverAmount != nil {
-			report.TotalCoverage = report.TotalCoverage.Add(decimal.NewFromFloat(*p.CoverAmount))
+			report.TotalCoverage = report.TotalCoverage.Add(*p.CoverAmount)
 		}
 		if p.PremiumAmount != nil && p.PremiumFrequency != nil {
-			premium := decimal.NewFromFloat(*p.PremiumAmount)
-			annual := s.annualizePremium(premium, *p.PremiumFrequency)
+			annual := s.annualizePremium(*p.PremiumAmount, *p.PremiumFrequency)
 			report.AnnualPremiums = report.AnnualPremiums.Add(annual)
 		}
 
@@ -245,11 +239,10 @@ func (s *ReportService) GetInsuranceCoverage(ctx context.Context, householdID uu
 		}
 		typeMap[p.PolicyType].Count++
 		if p.CoverAmount != nil {
-			typeMap[p.PolicyType].TotalCoverage = typeMap[p.PolicyType].TotalCoverage.Add(decimal.NewFromFloat(*p.CoverAmount))
+			typeMap[p.PolicyType].TotalCoverage = typeMap[p.PolicyType].TotalCoverage.Add(*p.CoverAmount)
 		}
 		if p.PremiumAmount != nil && p.PremiumFrequency != nil {
-			premium := decimal.NewFromFloat(*p.PremiumAmount)
-			annual := s.annualizePremium(premium, *p.PremiumFrequency)
+			annual := s.annualizePremium(*p.PremiumAmount, *p.PremiumFrequency)
 			typeMap[p.PolicyType].AnnualPremiums = typeMap[p.PolicyType].AnnualPremiums.Add(annual)
 		}
 	}
@@ -277,11 +270,11 @@ func (s *ReportService) GetAssetAllocation(ctx context.Context, householdID uuid
 	categories := make(map[string]*models.AllocationCategory)
 
 	// Investments
-	portfolios, _ := s.portfolioRepo.ListByUserID(ctx, userID)
+	portfolios, _ := s.portfolioRepo.GetByUserID(ctx, userID)
 	investmentsValue := decimal.Zero
 	investmentsCount := 0
 	for _, p := range portfolios {
-		holdings, _ := s.holdingRepo.ListByPortfolioID(ctx, p.ID)
+		holdings, _ := s.holdingRepo.GetByPortfolioID(ctx, p.ID)
 		for _, h := range holdings {
 			val := decimal.NewFromFloat(h.Quantity).Mul(decimal.NewFromFloat(h.AverageCost))
 			investmentsValue = investmentsValue.Add(val)
@@ -297,10 +290,10 @@ func (s *ReportService) GetAssetAllocation(ctx context.Context, householdID uuid
 	}
 
 	// Cash
-	cashAccounts, _ := s.cashRepo.GetAllByUserID(ctx, userID)
+	cashAccounts, _ := s.cashRepo.GetByUserID(ctx, userID)
 	cashValue := decimal.Zero
 	for _, c := range cashAccounts {
-		cashValue = cashValue.Add(c.Balance)
+		cashValue = cashValue.Add(decimal.NewFromFloat(c.Balance))
 	}
 	if len(cashAccounts) > 0 {
 		categories["Cash"] = &models.AllocationCategory{
@@ -315,7 +308,7 @@ func (s *ReportService) GetAssetAllocation(ctx context.Context, householdID uuid
 	propertyValue := decimal.Zero
 	for _, p := range properties {
 		if p.CurrentValue != nil {
-			propertyValue = propertyValue.Add(decimal.NewFromFloat(*p.CurrentValue))
+			propertyValue = propertyValue.Add(*p.CurrentValue)
 		}
 	}
 	if len(properties) > 0 {
@@ -331,7 +324,7 @@ func (s *ReportService) GetAssetAllocation(ctx context.Context, householdID uuid
 	vehicleValue := decimal.Zero
 	for _, v := range vehicles {
 		if v.CurrentValue != nil {
-			vehicleValue = vehicleValue.Add(decimal.NewFromFloat(*v.CurrentValue))
+			vehicleValue = vehicleValue.Add(*v.CurrentValue)
 		}
 	}
 	if len(vehicles) > 0 {
@@ -343,10 +336,10 @@ func (s *ReportService) GetAssetAllocation(ctx context.Context, householdID uuid
 	}
 
 	// Other assets
-	fixedAssets, _ := s.fixedAssetRepo.GetAllByUserID(ctx, userID)
+	fixedAssets, _ := s.fixedAssetRepo.GetByUserID(ctx, userID)
 	otherValue := decimal.Zero
 	for _, a := range fixedAssets {
-		otherValue = otherValue.Add(a.CurrentValue)
+		otherValue = otherValue.Add(decimal.NewFromFloat(a.CurrentValue))
 	}
 	if len(fixedAssets) > 0 {
 		categories["Other Assets"] = &models.AllocationCategory{

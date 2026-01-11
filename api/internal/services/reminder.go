@@ -180,68 +180,65 @@ func (s *ReminderService) getVehicleReminders(ctx context.Context, householdID u
 	var reminders []*models.Reminder
 	for _, v := range vehicles {
 		// MOT expiry
-		if v.MOTExpiry != nil && *v.MOTExpiry != "" {
-			if motDate, err := time.Parse("2006-01-02", *v.MOTExpiry); err == nil {
-				daysUntil := int(motDate.Sub(now).Hours() / 24)
-				if daysUntil <= daysAhead {
-					reminders = append(reminders, &models.Reminder{
-						ID:          fmt.Sprintf("mot_%s", v.ID.String()),
-						Type:        models.ReminderTypeVehicleMOT,
-						Title:       fmt.Sprintf("%s MOT expires", v.Name),
-						Description: fmt.Sprintf("MOT expires on %s", motDate.Format("2 Jan 2006")),
-						DueDate:     motDate,
-						DaysUntil:   daysUntil,
-						Priority:    models.GetPriority(daysUntil),
-						IsOverdue:   daysUntil < 0,
-						EntityID:    v.ID,
-						EntityType:  "vehicle",
-						EntityName:  v.Name,
-					})
-				}
+		if v.MOTExpiry != nil {
+			motDate := *v.MOTExpiry
+			daysUntil := int(motDate.Sub(now).Hours() / 24)
+			if daysUntil <= daysAhead {
+				reminders = append(reminders, &models.Reminder{
+					ID:          fmt.Sprintf("mot_%s", v.ID.String()),
+					Type:        models.ReminderTypeVehicleMOT,
+					Title:       fmt.Sprintf("%s MOT expires", v.Name),
+					Description: fmt.Sprintf("MOT expires on %s", motDate.Format("2 Jan 2006")),
+					DueDate:     motDate,
+					DaysUntil:   daysUntil,
+					Priority:    models.GetPriority(daysUntil),
+					IsOverdue:   daysUntil < 0,
+					EntityID:    v.ID,
+					EntityType:  "vehicle",
+					EntityName:  v.Name,
+				})
 			}
 		}
 
 		// Tax expiry
-		if v.TaxExpiry != nil && *v.TaxExpiry != "" {
-			if taxDate, err := time.Parse("2006-01-02", *v.TaxExpiry); err == nil {
-				daysUntil := int(taxDate.Sub(now).Hours() / 24)
-				if daysUntil <= daysAhead {
-					reminders = append(reminders, &models.Reminder{
-						ID:          fmt.Sprintf("tax_%s", v.ID.String()),
-						Type:        models.ReminderTypeVehicleTax,
-						Title:       fmt.Sprintf("%s road tax expires", v.Name),
-						Description: fmt.Sprintf("Road tax expires on %s", taxDate.Format("2 Jan 2006")),
-						DueDate:     taxDate,
-						DaysUntil:   daysUntil,
-						Priority:    models.GetPriority(daysUntil),
-						IsOverdue:   daysUntil < 0,
-						EntityID:    v.ID,
-						EntityType:  "vehicle",
-						EntityName:  v.Name,
-					})
-				}
+		if v.TaxExpiry != nil {
+			taxDate := *v.TaxExpiry
+			daysUntil := int(taxDate.Sub(now).Hours() / 24)
+			if daysUntil <= daysAhead {
+				reminders = append(reminders, &models.Reminder{
+					ID:          fmt.Sprintf("tax_%s", v.ID.String()),
+					Type:        models.ReminderTypeVehicleTax,
+					Title:       fmt.Sprintf("%s road tax expires", v.Name),
+					Description: fmt.Sprintf("Road tax expires on %s", taxDate.Format("2 Jan 2006")),
+					DueDate:     taxDate,
+					DaysUntil:   daysUntil,
+					Priority:    models.GetPriority(daysUntil),
+					IsOverdue:   daysUntil < 0,
+					EntityID:    v.ID,
+					EntityType:  "vehicle",
+					EntityName:  v.Name,
+				})
 			}
 		}
 
 		// Insurance expiry
-		if v.InsuranceExpiry != nil && *v.InsuranceExpiry != "" {
-			if insDate, err := time.Parse("2006-01-02", *v.InsuranceExpiry); err == nil {
-				daysUntil := int(insDate.Sub(now).Hours() / 24)
-				if daysUntil <= daysAhead {
-					reminders = append(reminders, &models.Reminder{
-						ID:          fmt.Sprintf("vins_%s", v.ID.String()),
-						Type:        models.ReminderTypeVehicleInsurance,
-						Title:       fmt.Sprintf("%s insurance expires", v.Name),
-						Description: fmt.Sprintf("Vehicle insurance expires on %s", insDate.Format("2 Jan 2006")),
-						DueDate:     insDate,
-						DaysUntil:   daysUntil,
-						Priority:    models.GetPriority(daysUntil),
-						IsOverdue:   daysUntil < 0,
-						EntityID:    v.ID,
-						EntityType:  "vehicle",
-						EntityName:  v.Name,
-					})
-				}
+		if v.InsuranceExpiry != nil {
+			insDate := *v.InsuranceExpiry
+			daysUntil := int(insDate.Sub(now).Hours() / 24)
+			if daysUntil <= daysAhead {
+				reminders = append(reminders, &models.Reminder{
+					ID:          fmt.Sprintf("vins_%s", v.ID.String()),
+					Type:        models.ReminderTypeVehicleInsurance,
+					Title:       fmt.Sprintf("%s insurance expires", v.Name),
+					Description: fmt.Sprintf("Vehicle insurance expires on %s", insDate.Format("2 Jan 2006")),
+					DueDate:     insDate,
+					DaysUntil:   daysUntil,
+					Priority:    models.GetPriority(daysUntil),
+					IsOverdue:   daysUntil < 0,
+					EntityID:    v.ID,
+					EntityType:  "vehicle",
+					EntityName:  v.Name,
+				})
 			}
 		}
 	}
@@ -295,24 +292,23 @@ func (s *ReminderService) getPropertyReminders(ctx context.Context, householdID 
 	var reminders []*models.Reminder
 	for _, p := range properties {
 		// Mortgage end date
-		if p.MortgageEndDate != nil && *p.MortgageEndDate != "" {
-			if mortgageDate, err := time.Parse("2006-01-02", *p.MortgageEndDate); err == nil {
-				daysUntil := int(mortgageDate.Sub(now).Hours() / 24)
-				if daysUntil <= daysAhead && daysUntil >= -30 { // Include recently ended
-					reminders = append(reminders, &models.Reminder{
-						ID:          fmt.Sprintf("mort_%s", p.ID.String()),
-						Type:        models.ReminderTypeMortgageEnd,
-						Title:       fmt.Sprintf("%s mortgage ends", p.Name),
-						Description: fmt.Sprintf("Mortgage term ends on %s", mortgageDate.Format("2 Jan 2006")),
-						DueDate:     mortgageDate,
-						DaysUntil:   daysUntil,
-						Priority:    models.GetPriority(daysUntil),
-						IsOverdue:   daysUntil < 0,
-						EntityID:    p.ID,
-						EntityType:  "property",
-						EntityName:  p.Name,
-					})
-				}
+		if p.MortgageEndDate != nil {
+			mortgageDate := *p.MortgageEndDate
+			daysUntil := int(mortgageDate.Sub(now).Hours() / 24)
+			if daysUntil <= daysAhead && daysUntil >= -30 { // Include recently ended
+				reminders = append(reminders, &models.Reminder{
+					ID:          fmt.Sprintf("mort_%s", p.ID.String()),
+					Type:        models.ReminderTypeMortgageEnd,
+					Title:       fmt.Sprintf("%s mortgage ends", p.Name),
+					Description: fmt.Sprintf("Mortgage term ends on %s", mortgageDate.Format("2 Jan 2006")),
+					DueDate:     mortgageDate,
+					DaysUntil:   daysUntil,
+					Priority:    models.GetPriority(daysUntil),
+					IsOverdue:   daysUntil < 0,
+					EntityID:    p.ID,
+					EntityType:  "property",
+					EntityName:  p.Name,
+				})
 			}
 		}
 	}

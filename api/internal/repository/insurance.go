@@ -253,7 +253,7 @@ func (r *InsuranceRepository) GetCoveredPeople(ctx context.Context, policyID uui
 			FirstName: *firstName,
 		}
 		if lastName != nil {
-			cp.Person.LastName = lastName
+			cp.Person.LastName = *lastName
 		}
 		people = append(people, &cp)
 	}
