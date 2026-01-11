@@ -15,6 +15,9 @@ import { Prices } from '@/pages/Prices';
 import { FixedAssets } from '@/pages/FixedAssets';
 import { Settings } from '@/pages/Settings';
 import { Admin } from '@/pages/Admin';
+import { Family } from '@/pages/Family';
+import { Properties } from '@/pages/Properties';
+import { Vehicles } from '@/pages/Vehicles';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -188,6 +191,30 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <FixedAssets />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/family"
+            element={
+              <ProtectedRoute>
+                <Family />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/properties"
+            element={
+              <ProtectedRoute>
+                <Properties />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicles"
+            element={
+              <ProtectedRoute>
+                <Vehicles />
               </ProtectedRoute>
             }
           />

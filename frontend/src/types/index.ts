@@ -316,3 +316,221 @@ export interface PerformanceData {
   change_pct: number;
   portfolios?: PortfolioPerformance[];
 }
+
+// Family/Household Types
+export type HouseholdRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type InviteStatus = 'pending' | 'accepted' | 'declined';
+export type Gender = 'male' | 'female' | 'non_binary' | 'prefer_not_to_say' | 'other';
+
+export type RelationshipType =
+  | 'spouse'
+  | 'partner'
+  | 'parent'
+  | 'child'
+  | 'sibling'
+  | 'grandparent'
+  | 'grandchild'
+  | 'aunt_uncle'
+  | 'niece_nephew'
+  | 'cousin'
+  | 'step_parent'
+  | 'step_child'
+  | 'step_sibling'
+  | 'in_law'
+  | 'guardian'
+  | 'ward'
+  | 'other';
+
+export interface Household {
+  id: string;
+  name: string;
+  owner_user_id: string;
+  created_at: string;
+  updated_at: string;
+  members?: HouseholdMember[];
+}
+
+export interface HouseholdMember {
+  id: string;
+  household_id: string;
+  user_id?: string;
+  role: HouseholdRole;
+  invited_email?: string;
+  invite_status: InviteStatus;
+  joined_at?: string;
+  created_at: string;
+  user?: {
+    id: string;
+    email: string;
+    display_name?: string;
+  };
+}
+
+export interface PersonMetadata {
+  occupation?: string;
+  employer?: string;
+  education?: string;
+  hobbies?: string[];
+  dietary_requirements?: string;
+  allergies?: string[];
+  notes?: string;
+}
+
+export interface Person {
+  id: string;
+  household_id: string;
+  user_id?: string;
+  first_name: string;
+  last_name?: string;
+  nickname?: string;
+  date_of_birth?: string;
+  gender?: Gender;
+  email?: string;
+  phone?: string;
+  national_insurance_number?: string;
+  passport_number?: string;
+  driving_licence_number?: string;
+  blood_type?: string;
+  medical_notes?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  avatar_url?: string;
+  is_primary_account_holder: boolean;
+  metadata?: PersonMetadata;
+  created_at: string;
+  updated_at: string;
+  // Computed fields from backend
+  age?: number;
+  full_name?: string;
+  relationships?: FamilyRelationship[];
+}
+
+export interface FamilyRelationship {
+  id: string;
+  household_id: string;
+  person_id: string;
+  related_person_id: string;
+  relationship_type: RelationshipType;
+  created_at: string;
+  related_person?: Person;
+}
+
+// Property Types
+export type PropertyType = 'HOUSE' | 'FLAT' | 'LAND' | 'COMMERCIAL' | 'OTHER';
+export type OwnershipType = 'SOLE' | 'JOINT_TENANTS' | 'TENANTS_IN_COMMON';
+
+export interface Property {
+  id: string;
+  household_id: string;
+  name: string;
+  property_type: PropertyType;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  county?: string;
+  postcode?: string;
+  country?: string;
+  purchase_date?: string;
+  purchase_price?: number;
+  current_value?: number;
+  currency: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  square_feet?: number;
+  land_registry_title?: string;
+  epc_rating?: string;
+  council_tax_band?: string;
+  is_primary_residence: boolean;
+  is_rental: boolean;
+  rental_income?: number;
+  mortgage_provider?: string;
+  mortgage_account_number?: string;
+  mortgage_balance?: number;
+  mortgage_rate?: number;
+  mortgage_end_date?: string;
+  mortgage_monthly_payment?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  owners?: PropertyOwner[];
+  equity?: number;
+}
+
+export interface PropertyOwner {
+  id: string;
+  property_id: string;
+  person_id: string;
+  ownership_percentage: number;
+  ownership_type?: OwnershipType;
+  created_at: string;
+  person?: Person;
+}
+
+// Vehicle Types
+export type VehicleType = 'CAR' | 'MOTORCYCLE' | 'VAN' | 'BOAT' | 'CARAVAN' | 'OTHER';
+export type FuelType = 'PETROL' | 'DIESEL' | 'ELECTRIC' | 'HYBRID' | 'OTHER';
+export type ServiceType = 'MOT' | 'SERVICE' | 'REPAIR' | 'TYRE' | 'OTHER';
+
+export interface Vehicle {
+  id: string;
+  household_id: string;
+  name: string;
+  vehicle_type: VehicleType;
+  make?: string;
+  model?: string;
+  year?: number;
+  registration?: string;
+  vin?: string;
+  color?: string;
+  fuel_type?: FuelType;
+  transmission?: string;
+  engine_size?: string;
+  mileage?: number;
+  purchase_date?: string;
+  purchase_price?: number;
+  current_value?: number;
+  currency: string;
+  mot_expiry?: string;
+  tax_expiry?: string;
+  insurance_expiry?: string;
+  insurance_provider?: string;
+  insurance_policy_number?: string;
+  finance_provider?: string;
+  finance_end_date?: string;
+  finance_monthly_payment?: number;
+  finance_balance?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  users?: VehicleUser[];
+  service_records?: VehicleServiceRecord[];
+  days_until_mot?: number;
+  days_until_tax?: number;
+  days_until_insurance?: number;
+}
+
+export interface VehicleUser {
+  id: string;
+  vehicle_id: string;
+  person_id: string;
+  is_primary_driver: boolean;
+  is_named_on_insurance: boolean;
+  created_at: string;
+  person?: Person;
+}
+
+export interface VehicleServiceRecord {
+  id: string;
+  vehicle_id: string;
+  service_type: ServiceType;
+  service_date: string;
+  mileage?: number;
+  provider?: string;
+  description?: string;
+  cost?: number;
+  currency: string;
+  next_service_date?: string;
+  next_service_mileage?: number;
+  notes?: string;
+  created_at: string;
+}

@@ -95,6 +95,10 @@ func main() {
 	txRepo := repository.NewTransactionRepository(db.Pool)
 	cashRepo := repository.NewCashAccountRepository(db.Pool)
 	fixedAssetRepo := repository.NewFixedAssetRepository(db.Pool)
+	householdRepo := repository.NewHouseholdRepository(db.Pool)
+	personRepo := repository.NewPersonRepository(db.Pool)
+	propertyRepo := repository.NewPropertyRepository(db.Pool)
+	vehicleRepo := repository.NewVehicleRepository(db.Pool)
 
 	// Initialize Yahoo client and service
 	yahooClient := yahoo.NewClient()
@@ -114,6 +118,10 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler(portfolioRepo, holdingRepo, txRepo, cashRepo, fixedAssetRepo, userRepo, yahooService)
 	healthHandler := handlers.NewHealthHandler(db, redis)
 	adminHandler := handlers.NewAdminHandler(userRepo)
+	householdHandler := handlers.NewHouseholdHandler(householdRepo, personRepo)
+	personHandler := handlers.NewPersonHandler(personRepo, householdRepo)
+	propertyHandler := handlers.NewPropertyHandler(propertyRepo, householdRepo)
+	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo, householdRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -151,6 +159,13 @@ func main() {
 		r.Get("/config/asset-types", healthHandler.AssetTypes)
 		r.Get("/config/portfolio-types", healthHandler.PortfolioTypes)
 		r.Get("/config/transaction-types", healthHandler.TransactionTypes)
+		r.Get("/config/relationship-types", healthHandler.RelationshipTypes)
+		r.Get("/config/genders", healthHandler.Genders)
+		r.Get("/config/household-roles", healthHandler.HouseholdRoles)
+		r.Get("/config/property-types", healthHandler.PropertyTypes)
+		r.Get("/config/vehicle-types", healthHandler.VehicleTypes)
+		r.Get("/config/fuel-types", healthHandler.FuelTypes)
+		r.Get("/config/service-types", healthHandler.ServiceTypes)
 
 		// Auth routes (public) with stricter rate limiting
 		r.Route("/auth", func(r chi.Router) {
@@ -219,6 +234,57 @@ func main() {
 			r.Get("/dashboard/allocation", dashboardHandler.Allocation)
 			r.Get("/dashboard/top-movers", dashboardHandler.TopMovers)
 			r.Get("/dashboard/performance", dashboardHandler.Performance)
+
+			// Households
+			r.Route("/households", func(r chi.Router) {
+				r.Get("/", householdHandler.List)
+				r.Post("/", householdHandler.Create)
+				r.Get("/default", householdHandler.GetDefault)
+				r.Get("/{id}", householdHandler.Get)
+				r.Put("/{id}", householdHandler.Update)
+				r.Delete("/{id}", householdHandler.Delete)
+				r.Get("/{id}/members", householdHandler.GetMembers)
+				r.Post("/{id}/members", householdHandler.InviteMember)
+				r.Delete("/{id}/members/{memberId}", householdHandler.RemoveMember)
+			})
+
+			// People (Family Members)
+			r.Route("/people", func(r chi.Router) {
+				r.Get("/", personHandler.List)
+				r.Post("/", personHandler.Create)
+				r.Get("/{id}", personHandler.Get)
+				r.Put("/{id}", personHandler.Update)
+				r.Delete("/{id}", personHandler.Delete)
+				r.Get("/{id}/relationships", personHandler.GetRelationships)
+				r.Post("/{id}/relationships", personHandler.AddRelationship)
+				r.Delete("/{id}/relationships/{relId}", personHandler.RemoveRelationship)
+			})
+
+			// Properties
+			r.Route("/properties", func(r chi.Router) {
+				r.Get("/", propertyHandler.List)
+				r.Post("/", propertyHandler.Create)
+				r.Get("/{id}", propertyHandler.Get)
+				r.Put("/{id}", propertyHandler.Update)
+				r.Delete("/{id}", propertyHandler.Delete)
+				r.Post("/{id}/owners", propertyHandler.AddOwner)
+				r.Delete("/{id}/owners/{personId}", propertyHandler.RemoveOwner)
+			})
+
+			// Vehicles
+			r.Route("/vehicles", func(r chi.Router) {
+				r.Get("/", vehicleHandler.List)
+				r.Post("/", vehicleHandler.Create)
+				r.Get("/upcoming-mots", vehicleHandler.GetUpcomingMOTs)
+				r.Get("/{id}", vehicleHandler.Get)
+				r.Put("/{id}", vehicleHandler.Update)
+				r.Delete("/{id}", vehicleHandler.Delete)
+				r.Post("/{id}/users", vehicleHandler.AddUser)
+				r.Delete("/{id}/users/{personId}", vehicleHandler.RemoveUser)
+				r.Get("/{id}/service-records", vehicleHandler.GetServiceRecords)
+				r.Post("/{id}/service-records", vehicleHandler.AddServiceRecord)
+				r.Delete("/{id}/service-records/{recordId}", vehicleHandler.DeleteServiceRecord)
+			})
 
 			// Admin routes (requires admin privileges)
 			r.Route("/admin", func(r chi.Router) {

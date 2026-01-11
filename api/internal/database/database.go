@@ -53,17 +53,26 @@ func (db *DB) Migrate(migrationsPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	// Read the init migration file
-	migrationFile := filepath.Join(migrationsPath, "001_init.sql")
-	content, err := os.ReadFile(migrationFile)
+	// Read all migration files
+	files, err := filepath.Glob(filepath.Join(migrationsPath, "*.sql"))
 	if err != nil {
-		return fmt.Errorf("failed to read migration file: %w", err)
+		return fmt.Errorf("failed to read migration files: %w", err)
 	}
 
-	// Execute the migration
-	_, err = db.Pool.Exec(ctx, string(content))
-	if err != nil {
-		return fmt.Errorf("failed to execute migration: %w", err)
+	// Sort files to ensure they run in order (001, 002, etc.)
+	// filepath.Glob returns files in lexical order, which works for our naming scheme
+
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("failed to read migration file %s: %w", file, err)
+		}
+
+		// Execute the migration
+		_, err = db.Pool.Exec(ctx, string(content))
+		if err != nil {
+			return fmt.Errorf("failed to execute migration %s: %w", file, err)
+		}
 	}
 
 	return nil

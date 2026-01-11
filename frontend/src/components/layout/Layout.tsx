@@ -14,6 +14,9 @@ import {
   DollarSign,
   ChevronDown,
   Shield,
+  Users,
+  Home,
+  Car,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -26,6 +29,9 @@ const baseNavItems = [
   { path: '/holdings', label: 'Holdings', icon: PieChart },
   { path: '/charts', label: 'Charts', icon: LineChart },
   { path: '/prices', label: 'Prices', icon: DollarSign },
+  { path: '/family', label: 'Family', icon: Users },
+  { path: '/properties', label: 'Properties', icon: Home },
+  { path: '/vehicles', label: 'Vehicles', icon: Car },
 ];
 
 const adminNavItem = { path: '/admin', label: 'Admin', icon: Shield };

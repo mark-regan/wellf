@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mark-regan/wellf/internal/database"
+	"github.com/mark-regan/wellf/internal/models"
 	"github.com/mark-regan/wellf/pkg/validator"
 )
 
@@ -101,4 +102,32 @@ func (h *HealthHandler) ValidateCurrency(w http.ResponseWriter, r *http.Request)
 	JSON(w, http.StatusOK, map[string]bool{
 		"valid": validator.IsValidCurrency(currency),
 	})
+}
+
+func (h *HealthHandler) RelationshipTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidRelationshipTypes())
+}
+
+func (h *HealthHandler) Genders(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidGenders())
+}
+
+func (h *HealthHandler) HouseholdRoles(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidHouseholdRoles())
+}
+
+func (h *HealthHandler) PropertyTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidPropertyTypes())
+}
+
+func (h *HealthHandler) VehicleTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidVehicleTypes())
+}
+
+func (h *HealthHandler) FuelTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidFuelTypes())
+}
+
+func (h *HealthHandler) ServiceTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidServiceTypes())
 }
