@@ -131,3 +131,15 @@ func (h *HealthHandler) FuelTypes(w http.ResponseWriter, r *http.Request) {
 func (h *HealthHandler) ServiceTypes(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, models.ValidServiceTypes())
 }
+
+func (h *HealthHandler) InsurancePolicyTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidPolicyTypes())
+}
+
+func (h *HealthHandler) InsuranceClaimTypes(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidClaimTypes())
+}
+
+func (h *HealthHandler) InsuranceClaimStatuses(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, models.ValidClaimStatuses())
+}

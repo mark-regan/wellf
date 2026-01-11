@@ -99,6 +99,7 @@ func main() {
 	personRepo := repository.NewPersonRepository(db.Pool)
 	propertyRepo := repository.NewPropertyRepository(db.Pool)
 	vehicleRepo := repository.NewVehicleRepository(db.Pool)
+	insuranceRepo := repository.NewInsuranceRepository(db.Pool)
 
 	// Initialize Yahoo client and service
 	yahooClient := yahoo.NewClient()
@@ -122,6 +123,7 @@ func main() {
 	personHandler := handlers.NewPersonHandler(personRepo, householdRepo)
 	propertyHandler := handlers.NewPropertyHandler(propertyRepo, householdRepo)
 	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo, householdRepo)
+	insuranceHandler := handlers.NewInsuranceHandler(insuranceRepo, householdRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -166,6 +168,9 @@ func main() {
 		r.Get("/config/vehicle-types", healthHandler.VehicleTypes)
 		r.Get("/config/fuel-types", healthHandler.FuelTypes)
 		r.Get("/config/service-types", healthHandler.ServiceTypes)
+		r.Get("/config/insurance-policy-types", healthHandler.InsurancePolicyTypes)
+		r.Get("/config/insurance-claim-types", healthHandler.InsuranceClaimTypes)
+		r.Get("/config/insurance-claim-statuses", healthHandler.InsuranceClaimStatuses)
 
 		// Auth routes (public) with stricter rate limiting
 		r.Route("/auth", func(r chi.Router) {
@@ -284,6 +289,23 @@ func main() {
 				r.Get("/{id}/service-records", vehicleHandler.GetServiceRecords)
 				r.Post("/{id}/service-records", vehicleHandler.AddServiceRecord)
 				r.Delete("/{id}/service-records/{recordId}", vehicleHandler.DeleteServiceRecord)
+			})
+
+			// Insurance
+			r.Route("/insurance", func(r chi.Router) {
+				r.Get("/", insuranceHandler.List)
+				r.Post("/", insuranceHandler.Create)
+				r.Get("/upcoming-renewals", insuranceHandler.GetUpcomingRenewals)
+				r.Get("/{id}", insuranceHandler.Get)
+				r.Put("/{id}", insuranceHandler.Update)
+				r.Delete("/{id}", insuranceHandler.Delete)
+				r.Get("/{id}/covered-people", insuranceHandler.GetCoveredPeople)
+				r.Post("/{id}/covered-people", insuranceHandler.AddCoveredPerson)
+				r.Delete("/{id}/covered-people/{personId}", insuranceHandler.RemoveCoveredPerson)
+				r.Get("/{id}/claims", insuranceHandler.GetClaims)
+				r.Post("/{id}/claims", insuranceHandler.AddClaim)
+				r.Put("/{id}/claims/{claimId}", insuranceHandler.UpdateClaim)
+				r.Delete("/{id}/claims/{claimId}", insuranceHandler.DeleteClaim)
 			})
 
 			// Admin routes (requires admin privileges)

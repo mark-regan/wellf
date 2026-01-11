@@ -17,6 +17,7 @@ import {
   Users,
   Home,
   Car,
+  FileCheck,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ const baseNavItems = [
   { path: '/family', label: 'Family', icon: Users },
   { path: '/properties', label: 'Properties', icon: Home },
   { path: '/vehicles', label: 'Vehicles', icon: Car },
+  { path: '/insurance', label: 'Insurance', icon: FileCheck },
 ];
 
 const adminNavItem = { path: '/admin', label: 'Admin', icon: Shield };

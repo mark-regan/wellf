@@ -212,7 +212,7 @@ This file tracks implementation progress across sessions. Update checkboxes as w
 
 ### 4.2 Backend Implementation
 - [ ] Document upload endpoint
-- [ ] File storage service - (assume user has onedrive or other cloud account)
+- [ ] File storage service - (assume user has onedrive or other cloud account so just use links)
 - [ ] Document retrieval with signed URLs
 
 ### 4.3 Frontend Implementation

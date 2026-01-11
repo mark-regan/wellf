@@ -18,6 +18,7 @@ import { Admin } from '@/pages/Admin';
 import { Family } from '@/pages/Family';
 import { Properties } from '@/pages/Properties';
 import { Vehicles } from '@/pages/Vehicles';
+import { Insurance } from '@/pages/Insurance';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -215,6 +216,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Vehicles />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insurance"
+            element={
+              <ProtectedRoute>
+                <Insurance />
               </ProtectedRoute>
             }
           />

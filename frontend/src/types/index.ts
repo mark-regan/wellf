@@ -534,3 +534,69 @@ export interface VehicleServiceRecord {
   notes?: string;
   created_at: string;
 }
+
+// Insurance Types
+export type InsurancePolicyType = 'HOME' | 'MOTOR' | 'LIFE' | 'HEALTH' | 'TRAVEL' | 'PET' | 'CONTENTS' | 'LANDLORD' | 'OTHER';
+export type PremiumFrequency = 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+export type CoverageType = 'PRIMARY' | 'NAMED' | 'DEPENDENT';
+export type InsuranceClaimType = 'THEFT' | 'DAMAGE' | 'ACCIDENT' | 'MEDICAL' | 'OTHER';
+export type InsuranceClaimStatus = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'SETTLED';
+
+export interface InsurancePolicy {
+  id: string;
+  household_id: string;
+  policy_name: string;
+  policy_type: InsurancePolicyType;
+  provider?: string;
+  policy_number?: string;
+  start_date?: string;
+  end_date?: string;
+  renewal_date?: string;
+  premium_amount?: number;
+  premium_frequency?: PremiumFrequency;
+  excess_amount?: number;
+  cover_amount?: number;
+  currency: string;
+  auto_renewal: boolean;
+  property_id?: string;
+  vehicle_id?: string;
+  broker_name?: string;
+  broker_phone?: string;
+  broker_email?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  covered_people?: InsuranceCoveredPerson[];
+  claims?: InsuranceClaim[];
+  days_until_renewal?: number;
+  is_expired?: boolean;
+}
+
+export interface InsuranceCoveredPerson {
+  id: string;
+  policy_id: string;
+  person_id: string;
+  coverage_type?: CoverageType;
+  notes?: string;
+  created_at: string;
+  person?: Person;
+}
+
+export interface InsuranceClaim {
+  id: string;
+  policy_id: string;
+  claim_reference?: string;
+  claim_date: string;
+  incident_date?: string;
+  claim_type?: InsuranceClaimType;
+  description?: string;
+  claim_amount?: number;
+  settled_amount?: number;
+  excess_paid?: number;
+  currency: string;
+  status: InsuranceClaimStatus;
+  resolution_date?: string;
+  resolution_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
