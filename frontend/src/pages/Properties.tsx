@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { propertyApi } from '@/api/property';
 import { personApi } from '@/api/person';
+import { fixedAssetApi } from '@/api/assets';
 import { Property, PropertyType, OwnershipType, Person } from '@/types';
 import {
   Plus,
@@ -178,7 +179,26 @@ export function Properties() {
       if (editingProperty) {
         await propertyApi.update(editingProperty.id, payload);
       } else {
-        await propertyApi.create(payload);
+        // Create the property
+        const createdProperty = await propertyApi.create(payload);
+
+        // Auto-create a linked Fixed Asset
+        if (createdProperty && formData.current_value) {
+          try {
+            await fixedAssetApi.create({
+              name: formData.name,
+              category: 'PROPERTY',
+              current_value: parseFloat(formData.current_value),
+              purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
+              purchase_date: formData.purchase_date || undefined,
+              currency: formData.currency,
+              description: `Linked to Property: ${createdProperty.id}`,
+            });
+          } catch (assetErr) {
+            console.error('Failed to create linked fixed asset:', assetErr);
+            // Don't fail the whole operation if asset creation fails
+          }
+        }
       }
       await fetchData();
       resetForm();
@@ -314,242 +334,253 @@ export function Properties() {
         </div>
       )}
 
-      {/* Create/Edit Form */}
+      {/* Create/Edit Modal */}
       {(showCreate || editingProperty) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingProperty ? 'Edit Property' : 'Add Property'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                  {formError}
-                </div>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">Name *</label>
-                  <Input
-                    placeholder="e.g. Family Home"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Property Type *</label>
-                  <select
-                    value={formData.property_type}
-                    onChange={(e) => setFormData({ ...formData, property_type: e.target.value as PropertyType })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {PROPERTY_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Currency</label>
-                  <select
-                    value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="GBP">GBP</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">
+                  {editingProperty ? 'Edit Property' : 'Add Property'}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Address Line 1</label>
-                  <Input
-                    placeholder="123 Main Street"
-                    value={formData.address_line1}
-                    onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Address Line 2</label>
-                  <Input
-                    placeholder="Apartment, suite, etc."
-                    value={formData.address_line2}
-                    onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="text-sm font-medium">City</label>
-                  <Input
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">County</label>
-                  <Input
-                    value={formData.county}
-                    onChange={(e) => setFormData({ ...formData, county: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Postcode</label>
-                  <Input
-                    value={formData.postcode}
-                    onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Country</label>
-                  <Input
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="text-sm font-medium">Purchase Date</label>
-                  <Input
-                    type="date"
-                    value={formData.purchase_date}
-                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Purchase Price</label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={formData.purchase_price}
-                    onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Current Value</label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={formData.current_value}
-                    onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-sm font-medium">Bedrooms</label>
-                    <Input
-                      type="number"
-                      value={formData.bedrooms}
-                      onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Bathrooms</label>
-                    <Input
-                      type="number"
-                      value={formData.bathrooms}
-                      onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="text-sm font-medium">Mortgage Provider</label>
-                  <Input
-                    value={formData.mortgage_provider}
-                    onChange={(e) => setFormData({ ...formData, mortgage_provider: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Mortgage Balance</label>
-                  <Input
-                    type="number"
-                    value={formData.mortgage_balance}
-                    onChange={(e) => setFormData({ ...formData, mortgage_balance: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Mortgage Rate (%)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.mortgage_rate}
-                    onChange={(e) => setFormData({ ...formData, mortgage_rate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Monthly Payment</label>
-                  <Input
-                    type="number"
-                    value={formData.mortgage_monthly_payment}
-                    onChange={(e) => setFormData({ ...formData, mortgage_monthly_payment: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="primary_residence"
-                    checked={formData.is_primary_residence}
-                    onChange={(e) => setFormData({ ...formData, is_primary_residence: e.target.checked })}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="primary_residence" className="text-sm">Primary Residence</label>
-                </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="is_rental"
-                    checked={formData.is_rental}
-                    onChange={(e) => setFormData({ ...formData, is_rental: e.target.checked })}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="is_rental" className="text-sm">Rental Property</label>
-                </div>
-                {formData.is_rental && (
-                  <div>
-                    <label className="text-sm font-medium">Monthly Rental Income</label>
-                    <Input
-                      type="number"
-                      value={formData.rental_income}
-                      onChange={(e) => setFormData({ ...formData, rental_income: e.target.value })}
-                    />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {formError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+                    {formError}
                   </div>
                 )}
-              </div>
 
-              <div>
-                <label className="text-sm font-medium">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
-                  placeholder="Additional notes..."
-                />
-              </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="text-sm font-medium">Name *</label>
+                    <Input
+                      placeholder="e.g. Family Home"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Property Type *</label>
+                    <select
+                      value={formData.property_type}
+                      onChange={(e) => setFormData({ ...formData, property_type: e.target.value as PropertyType })}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {PROPERTY_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Currency</label>
+                    <select
+                      value={formData.currency}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="GBP">GBP</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : editingProperty ? 'Save Changes' : 'Add Property'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Address Line 1</label>
+                    <Input
+                      placeholder="123 Main Street"
+                      value={formData.address_line1}
+                      onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Address Line 2</label>
+                    <Input
+                      placeholder="Apartment, suite, etc."
+                      value={formData.address_line2}
+                      onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">County</label>
+                    <Input
+                      value={formData.county}
+                      onChange={(e) => setFormData({ ...formData, county: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Postcode</label>
+                    <Input
+                      value={formData.postcode}
+                      onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Country</label>
+                    <Input
+                      value={formData.country}
+                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="text-sm font-medium">Purchase Date</label>
+                    <Input
+                      type="date"
+                      value={formData.purchase_date}
+                      onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Purchase Price</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={formData.purchase_price}
+                      onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Current Value</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={formData.current_value}
+                      onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-sm font-medium">Bedrooms</label>
+                      <Input
+                        type="number"
+                        value={formData.bedrooms}
+                        onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Bathrooms</label>
+                      <Input
+                        type="number"
+                        value={formData.bathrooms}
+                        onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="text-sm font-medium">Mortgage Provider</label>
+                    <Input
+                      value={formData.mortgage_provider}
+                      onChange={(e) => setFormData({ ...formData, mortgage_provider: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Mortgage Balance</label>
+                    <Input
+                      type="number"
+                      value={formData.mortgage_balance}
+                      onChange={(e) => setFormData({ ...formData, mortgage_balance: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Mortgage Rate (%)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.mortgage_rate}
+                      onChange={(e) => setFormData({ ...formData, mortgage_rate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Monthly Payment</label>
+                    <Input
+                      type="number"
+                      value={formData.mortgage_monthly_payment}
+                      onChange={(e) => setFormData({ ...formData, mortgage_monthly_payment: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      type="checkbox"
+                      id="primary_residence"
+                      checked={formData.is_primary_residence}
+                      onChange={(e) => setFormData({ ...formData, is_primary_residence: e.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="primary_residence" className="text-sm">Primary Residence</label>
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      type="checkbox"
+                      id="is_rental"
+                      checked={formData.is_rental}
+                      onChange={(e) => setFormData({ ...formData, is_rental: e.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="is_rental" className="text-sm">Rental Property</label>
+                  </div>
+                  {formData.is_rental && (
+                    <div>
+                      <label className="text-sm font-medium">Monthly Rental Income</label>
+                      <Input
+                        type="number"
+                        value={formData.rental_income}
+                        onChange={(e) => setFormData({ ...formData, rental_income: e.target.value })}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                    placeholder="Additional notes..."
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : editingProperty ? 'Save Changes' : 'Add Property'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation */}

@@ -682,6 +682,32 @@ export interface ReminderSummary {
   by_priority: Record<string, number>;
 }
 
+// Pet Types
+export type PetType = 'DOG' | 'CAT' | 'BIRD' | 'FISH' | 'REPTILE' | 'RABBIT' | 'HAMSTER' | 'OTHER';
+export type PetGender = 'MALE' | 'FEMALE' | 'UNKNOWN';
+
+export interface Pet {
+  id: string;
+  household_id: string;
+  name: string;
+  pet_type: PetType;
+  breed?: string;
+  date_of_birth?: string;
+  gender?: PetGender;
+  microchip_number?: string;
+  vet_name?: string;
+  vet_phone?: string;
+  vet_address?: string;
+  insurance_policy_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Computed fields
+  age?: number;
+  // Joined fields
+  insurance_policy?: InsurancePolicy;
+}
+
 // Report Types
 export interface HouseholdOverview {
   member_count: number;

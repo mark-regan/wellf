@@ -440,202 +440,213 @@ export function Vehicles() {
         </div>
       )}
 
-      {/* Create/Edit Form */}
+      {/* Create/Edit Modal */}
       {(showCreate || editingVehicle) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                  {formError}
-                </div>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="text-sm font-medium">Name *</label>
-                  <Input
-                    placeholder="e.g. Family Car"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Vehicle Type *</label>
-                  <select
-                    value={formData.vehicle_type}
-                    onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value as VehicleType })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {VEHICLE_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Make</label>
-                  <Input
-                    placeholder="e.g. Toyota"
-                    value={formData.make}
-                    onChange={(e) => setFormData({ ...formData, make: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Model</label>
-                  <Input
-                    placeholder="e.g. Corolla"
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                  />
-                </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">
+                  {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-5">
-                <div>
-                  <label className="text-sm font-medium">Year</label>
-                  <Input
-                    type="number"
-                    placeholder="2020"
-                    value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Registration</label>
-                  <Input
-                    placeholder="AB12 CDE"
-                    value={formData.registration}
-                    onChange={(e) => setFormData({ ...formData, registration: e.target.value.toUpperCase() })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Color</label>
-                  <Input
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Fuel Type</label>
-                  <select
-                    value={formData.fuel_type}
-                    onChange={(e) => setFormData({ ...formData, fuel_type: e.target.value as FuelType })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select...</option>
-                    {FUEL_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Mileage</label>
-                  <Input
-                    type="number"
-                    value={formData.mileage}
-                    onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-                  />
-                </div>
-              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {formError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+                    {formError}
+                  </div>
+                )}
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="text-sm font-medium">Purchase Date</label>
-                  <Input
-                    type="date"
-                    value={formData.purchase_date}
-                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
-                  />
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="text-sm font-medium">Name *</label>
+                    <Input
+                      placeholder="e.g. Family Car"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Vehicle Type *</label>
+                    <select
+                      value={formData.vehicle_type}
+                      onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value as VehicleType })}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {VEHICLE_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Make</label>
+                    <Input
+                      placeholder="e.g. Toyota"
+                      value={formData.make}
+                      onChange={(e) => setFormData({ ...formData, make: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Model</label>
+                    <Input
+                      placeholder="e.g. Corolla"
+                      value={formData.model}
+                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Purchase Price</label>
-                  <Input
-                    type="number"
-                    value={formData.purchase_price}
-                    onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Current Value</label>
-                  <Input
-                    type="number"
-                    value={formData.current_value}
-                    onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Currency</label>
-                  <select
-                    value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="GBP">GBP</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="text-sm font-medium">MOT Expiry</label>
-                  <Input
-                    type="date"
-                    value={formData.mot_expiry}
-                    onChange={(e) => setFormData({ ...formData, mot_expiry: e.target.value })}
-                  />
+                <div className="grid gap-4 md:grid-cols-5">
+                  <div>
+                    <label className="text-sm font-medium">Year</label>
+                    <Input
+                      type="number"
+                      placeholder="2020"
+                      value={formData.year}
+                      onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Registration</label>
+                    <Input
+                      placeholder="AB12 CDE"
+                      value={formData.registration}
+                      onChange={(e) => setFormData({ ...formData, registration: e.target.value.toUpperCase() })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Color</label>
+                    <Input
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Fuel Type</label>
+                    <select
+                      value={formData.fuel_type}
+                      onChange={(e) => setFormData({ ...formData, fuel_type: e.target.value as FuelType })}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Select...</option>
+                      {FUEL_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Mileage</label>
+                    <Input
+                      type="number"
+                      value={formData.mileage}
+                      onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Tax Expiry</label>
-                  <Input
-                    type="date"
-                    value={formData.tax_expiry}
-                    onChange={(e) => setFormData({ ...formData, tax_expiry: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Insurance Expiry</label>
-                  <Input
-                    type="date"
-                    value={formData.insurance_expiry}
-                    onChange={(e) => setFormData({ ...formData, insurance_expiry: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Insurance Provider</label>
-                  <Input
-                    value={formData.insurance_provider}
-                    onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="text-sm font-medium">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
-                  placeholder="Additional notes..."
-                />
-              </div>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="text-sm font-medium">Purchase Date</label>
+                    <Input
+                      type="date"
+                      value={formData.purchase_date}
+                      onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Purchase Price</label>
+                    <Input
+                      type="number"
+                      value={formData.purchase_price}
+                      onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Current Value</label>
+                    <Input
+                      type="number"
+                      value={formData.current_value}
+                      onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Currency</label>
+                    <select
+                      value={formData.currency}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="GBP">GBP</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : editingVehicle ? 'Save Changes' : 'Add Vehicle'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="text-sm font-medium">MOT Expiry</label>
+                    <Input
+                      type="date"
+                      value={formData.mot_expiry}
+                      onChange={(e) => setFormData({ ...formData, mot_expiry: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Tax Expiry</label>
+                    <Input
+                      type="date"
+                      value={formData.tax_expiry}
+                      onChange={(e) => setFormData({ ...formData, tax_expiry: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Insurance Expiry</label>
+                    <Input
+                      type="date"
+                      value={formData.insurance_expiry}
+                      onChange={(e) => setFormData({ ...formData, insurance_expiry: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Insurance Provider</label>
+                    <Input
+                      value={formData.insurance_provider}
+                      onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                    placeholder="Additional notes..."
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : editingVehicle ? 'Save Changes' : 'Add Vehicle'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation */}

@@ -21,7 +21,8 @@ import { Vehicles } from '@/pages/Vehicles';
 import { Insurance } from '@/pages/Insurance';
 import Documents from '@/pages/Documents';
 import Calendar from '@/pages/Calendar';
-import Insights from '@/pages/Insights';
+import HouseHub from '@/pages/HouseHub';
+import Pets from '@/pages/Pets';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -142,8 +143,19 @@ export default function App() {
           />
 
           {/* Protected routes */}
+          {/* HouseHub - Main landing page */}
           <Route
             path="/"
+            element={
+              <ProtectedRoute>
+                <HouseHub />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Finance Hub (formerly Dashboard) */}
+          <Route
+            path="/finance"
             element={
               <ProtectedRoute>
                 <Dashboard />
@@ -198,14 +210,29 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* People (formerly Family) */}
           <Route
-            path="/family"
+            path="/people"
             element={
               <ProtectedRoute>
                 <Family />
               </ProtectedRoute>
             }
           />
+          {/* Redirect old family route to people */}
+          <Route path="/family" element={<Navigate to="/people" replace />} />
+
+          {/* Pets */}
+          <Route
+            path="/pets"
+            element={
+              <ProtectedRoute>
+                <Pets />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/properties"
             element={
@@ -246,14 +273,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/insights"
-            element={
-              <ProtectedRoute>
-                <Insights />
-              </ProtectedRoute>
-            }
-          />
+          {/* Redirect old insights route to home */}
+          <Route path="/insights" element={<Navigate to="/" replace />} />
           <Route
             path="/settings"
             element={

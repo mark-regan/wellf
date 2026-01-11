@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import {
-  LayoutDashboard,
   Briefcase,
   PieChart,
   LineChart,
@@ -15,52 +14,90 @@ import {
   ChevronDown,
   Shield,
   Users,
-  Home,
+  Home as HomeIcon,
   Car,
   FileCheck,
   FileText,
   Calendar,
-  BarChart3,
+  LayoutDashboard,
+  PawPrint,
 } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const baseNavItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/portfolios', label: 'Portfolios', icon: Briefcase },
-  { path: '/holdings', label: 'Holdings', icon: PieChart },
-  { path: '/charts', label: 'Charts', icon: LineChart },
-  { path: '/prices', label: 'Prices', icon: DollarSign },
-  { path: '/family', label: 'Family', icon: Users },
-  { path: '/properties', label: 'Properties', icon: Home },
-  { path: '/vehicles', label: 'Vehicles', icon: Car },
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+interface NavDropdownItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  items: NavItem[];
+}
+
+// Dropdown menus
+const householdMenu: NavDropdownItem = {
+  id: 'household',
+  label: 'Household',
+  icon: HomeIcon,
+  items: [
+    { path: '/people', label: 'People', icon: Users },
+    { path: '/pets', label: 'Pets', icon: PawPrint },
+    { path: '/properties', label: 'Property', icon: HomeIcon },
+    { path: '/vehicles', label: 'Vehicles', icon: Car },
+  ],
+};
+
+const financeMenu: NavDropdownItem = {
+  id: 'finance',
+  label: 'Finance',
+  icon: DollarSign,
+  items: [
+    { path: '/finance', label: 'Finance Hub', icon: LayoutDashboard },
+    { path: '/portfolios', label: 'Portfolios', icon: Briefcase },
+    { path: '/holdings', label: 'Holdings', icon: PieChart },
+    { path: '/prices', label: 'Prices', icon: DollarSign },
+    { path: '/charts', label: 'Charts', icon: LineChart },
+  ],
+};
+
+// Single nav items
+const singleNavItems: NavItem[] = [
+  { path: '/', label: 'HouseHub', icon: TrendingUp },
   { path: '/insurance', label: 'Insurance', icon: FileCheck },
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/insights', label: 'Insights', icon: BarChart3 },
 ];
 
-const adminNavItem = { path: '/admin', label: 'Admin', icon: Shield };
+// Admin nav item is rendered inline in the nav bar
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  // Close menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
+      }
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
       }
     };
 
@@ -68,10 +105,58 @@ export function Layout({ children }: LayoutProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close menu on route change
+  // Close menus on route change
   useEffect(() => {
     setShowUserMenu(false);
+    setOpenDropdown(null);
   }, [location.pathname]);
+
+  const isPathActive = (path: string) => location.pathname === path;
+  const isDropdownActive = (items: NavItem[]) => items.some((item) => location.pathname === item.path);
+
+  const toggleDropdown = (id: string) => {
+    setOpenDropdown(openDropdown === id ? null : id);
+  };
+
+  const renderDropdown = (menu: NavDropdownItem) => {
+    const Icon = menu.icon;
+    const isActive = isDropdownActive(menu.items);
+    const isOpen = openDropdown === menu.id;
+
+    return (
+      <div key={menu.id} className="relative">
+        <Button
+          variant={isActive ? 'secondary' : 'ghost'}
+          className="gap-2"
+          onClick={() => toggleDropdown(menu.id)}
+        >
+          <Icon className="h-4 w-4" />
+          {menu.label}
+          <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </Button>
+
+        {isOpen && (
+          <div className="absolute left-0 mt-1 w-48 rounded-md border bg-background shadow-lg py-1 z-50">
+            {menu.items.map((item) => {
+              const ItemIcon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors ${
+                    isPathActive(item.path) ? 'bg-muted font-medium' : ''
+                  }`}
+                >
+                  <ItemIcon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,14 +168,31 @@ export function Layout({ children }: LayoutProps) {
               <TrendingUp className="h-6 w-6 text-primary" />
               <span className="text-xl font-bold">wellf</span>
             </Link>
-            <nav className="hidden md:flex items-center gap-1">
-              {[...baseNavItems, ...(user?.is_admin ? [adminNavItem] : [])].map((item) => {
+            <nav className="hidden md:flex items-center gap-1" ref={navRef}>
+              {/* HouseHub - Home */}
+              <Link to="/">
+                <Button
+                  variant={isPathActive('/') ? 'secondary' : 'ghost'}
+                  className="gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  HouseHub
+                </Button>
+              </Link>
+
+              {/* Household Dropdown */}
+              {renderDropdown(householdMenu)}
+
+              {/* Finance Dropdown */}
+              {renderDropdown(financeMenu)}
+
+              {/* Single nav items (Insurance, Documents, Calendar) */}
+              {singleNavItems.slice(1).map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path;
                 return (
                   <Link key={item.path} to={item.path}>
                     <Button
-                      variant={isActive ? 'secondary' : 'ghost'}
+                      variant={isPathActive(item.path) ? 'secondary' : 'ghost'}
                       className="gap-2"
                     >
                       <Icon className="h-4 w-4" />
@@ -99,6 +201,19 @@ export function Layout({ children }: LayoutProps) {
                   </Link>
                 );
               })}
+
+              {/* Admin link */}
+              {user?.is_admin && (
+                <Link to="/admin">
+                  <Button
+                    variant={isPathActive('/admin') ? 'secondary' : 'ghost'}
+                    className="gap-2"
+                  >
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
 

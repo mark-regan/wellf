@@ -353,114 +353,125 @@ export function Family() {
         </div>
       )}
 
-      {/* Create/Edit Form */}
+      {/* Create/Edit Modal */}
       {(showCreate || editingPerson) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingPerson ? 'Edit Family Member' : 'Add Family Member'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                  {formError}
-                </div>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">First Name *</label>
-                  <Input
-                    placeholder="First name"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Last Name</label>
-                  <Input
-                    placeholder="Last name"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Nickname</label>
-                  <Input
-                    placeholder="Nickname"
-                    value={formData.nickname}
-                    onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                  />
-                </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">
+                  {editingPerson ? 'Edit Family Member' : 'Add Family Member'}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">Date of Birth</label>
-                  <Input
-                    type="date"
-                    value={formData.date_of_birth}
-                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Gender</label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as Gender })}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select...</option>
-                    {GENDERS.map((g) => (
-                      <option key={g.value} value={g.value}>{g.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="primary"
-                    checked={formData.is_primary_account_holder}
-                    onChange={(e) => setFormData({ ...formData, is_primary_account_holder: e.target.checked })}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="primary" className="text-sm">Primary Account Holder</label>
-                </div>
-              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {formError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+                    {formError}
+                  </div>
+                )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="email@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="text-sm font-medium">First Name *</label>
+                    <Input
+                      placeholder="First name"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Last Name</label>
+                    <Input
+                      placeholder="Last name"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Nickname</label>
+                    <Input
+                      placeholder="Nickname"
+                      value={formData.nickname}
+                      onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Phone</label>
-                  <Input
-                    type="tel"
-                    placeholder="+44 7700 900000"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : editingPerson ? 'Save Changes' : 'Add Member'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="text-sm font-medium">Date of Birth</label>
+                    <Input
+                      type="date"
+                      value={formData.date_of_birth}
+                      onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Gender</label>
+                    <select
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value as Gender })}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Select...</option>
+                      {GENDERS.map((g) => (
+                        <option key={g.value} value={g.value}>{g.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      type="checkbox"
+                      id="primary"
+                      checked={formData.is_primary_account_holder}
+                      onChange={(e) => setFormData({ ...formData, is_primary_account_holder: e.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="primary" className="text-sm">Primary Account Holder</label>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Email</label>
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Phone</label>
+                    <Input
+                      type="tel"
+                      placeholder="+44 7700 900000"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : editingPerson ? 'Save Changes' : 'Add Member'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation */}

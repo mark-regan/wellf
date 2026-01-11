@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { fixedAssetApi } from '@/api/assets';
 import { FixedAsset } from '@/types';
 import { formatCurrency, formatPercentage, formatDate, getChangeColor } from '@/utils/format';
-import { Plus, Building2, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Building2, Trash2, Edit2, X } from 'lucide-react';
 
 const CATEGORIES = ['PROPERTY', 'VEHICLE', 'COLLECTIBLE', 'OTHER'];
 
@@ -113,87 +113,96 @@ export function FixedAssets() {
         </CardContent>
       </Card>
 
-      {/* Create Form */}
+      {/* Create Modal */}
       {showCreate && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Fixed Asset</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <Input
-                    placeholder="e.g., Main Residence"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Current Value</label>
-                  <Input
-                    type="number"
-                    step="any"
-                    placeholder="425000"
-                    value={currentValue}
-                    onChange={(e) => setCurrentValue(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Purchase Price (optional)</label>
-                  <Input
-                    type="number"
-                    step="any"
-                    placeholder="350000"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Purchase Date (optional)</label>
-                  <Input
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description (optional)</label>
-                  <Input
-                    placeholder="Additional notes"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Add Fixed Asset</h2>
+                <button
+                  onClick={() => setShowCreate(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={creating}>
-                  {creating ? 'Creating...' : 'Add Asset'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Name</label>
+                    <Input
+                      placeholder="e.g., Main Residence"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Category</label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Current Value</label>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="425000"
+                      value={currentValue}
+                      onChange={(e) => setCurrentValue(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Purchase Price (optional)</label>
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="350000"
+                      value={purchasePrice}
+                      onChange={(e) => setPurchasePrice(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Purchase Date (optional)</label>
+                    <Input
+                      type="date"
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Description (optional)</label>
+                    <Input
+                      placeholder="Additional notes"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={creating}>
+                    {creating ? 'Creating...' : 'Add Asset'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Assets List */}
