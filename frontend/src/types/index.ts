@@ -600,3 +600,36 @@ export interface InsuranceClaim {
   created_at: string;
   updated_at: string;
 }
+
+// Document Types
+export type DocumentCategory = 'IDENTITY' | 'PROPERTY' | 'VEHICLE' | 'INSURANCE' | 'FINANCIAL' | 'MEDICAL' | 'LEGAL' | 'OTHER';
+export type FileType = 'PDF' | 'DOC' | 'DOCX' | 'XLS' | 'XLSX' | 'JPG' | 'PNG' | 'OTHER';
+
+export interface Document {
+  id: string;
+  household_id: string;
+  name: string;
+  description?: string;
+  category: DocumentCategory;
+  url: string;
+  file_type?: FileType;
+  file_size?: number;
+  document_date?: string;
+  expiry_date?: string;
+  tags?: string[];
+  person_id?: string;
+  property_id?: string;
+  vehicle_id?: string;
+  insurance_policy_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Computed fields
+  days_until_expiry?: number;
+  is_expired?: boolean;
+  // Joined fields
+  person?: Person;
+  property?: Property;
+  vehicle?: Vehicle;
+  insurance_policy?: InsurancePolicy;
+}

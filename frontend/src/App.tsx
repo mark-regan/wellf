@@ -19,6 +19,7 @@ import { Family } from '@/pages/Family';
 import { Properties } from '@/pages/Properties';
 import { Vehicles } from '@/pages/Vehicles';
 import { Insurance } from '@/pages/Insurance';
+import Documents from '@/pages/Documents';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -224,6 +225,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Insurance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <ProtectedRoute>
+                <Documents />
               </ProtectedRoute>
             }
           />

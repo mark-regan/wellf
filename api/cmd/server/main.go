@@ -100,6 +100,7 @@ func main() {
 	propertyRepo := repository.NewPropertyRepository(db.Pool)
 	vehicleRepo := repository.NewVehicleRepository(db.Pool)
 	insuranceRepo := repository.NewInsuranceRepository(db.Pool)
+	documentRepo := repository.NewDocumentRepository(db.Pool)
 
 	// Initialize Yahoo client and service
 	yahooClient := yahoo.NewClient()
@@ -124,6 +125,7 @@ func main() {
 	propertyHandler := handlers.NewPropertyHandler(propertyRepo, householdRepo)
 	vehicleHandler := handlers.NewVehicleHandler(vehicleRepo, householdRepo)
 	insuranceHandler := handlers.NewInsuranceHandler(insuranceRepo, householdRepo)
+	documentHandler := handlers.NewDocumentHandler(documentRepo, householdRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -171,6 +173,7 @@ func main() {
 		r.Get("/config/insurance-policy-types", healthHandler.InsurancePolicyTypes)
 		r.Get("/config/insurance-claim-types", healthHandler.InsuranceClaimTypes)
 		r.Get("/config/insurance-claim-statuses", healthHandler.InsuranceClaimStatuses)
+		r.Get("/config/document-categories", healthHandler.DocumentCategories)
 
 		// Auth routes (public) with stricter rate limiting
 		r.Route("/auth", func(r chi.Router) {
@@ -306,6 +309,18 @@ func main() {
 				r.Post("/{id}/claims", insuranceHandler.AddClaim)
 				r.Put("/{id}/claims/{claimId}", insuranceHandler.UpdateClaim)
 				r.Delete("/{id}/claims/{claimId}", insuranceHandler.DeleteClaim)
+			})
+
+			// Documents
+			r.Route("/documents", func(r chi.Router) {
+				r.Get("/", documentHandler.List)
+				r.Post("/", documentHandler.Create)
+				r.Get("/expiring", documentHandler.GetExpiringDocuments)
+				r.Get("/stats", documentHandler.GetCategoryStats)
+				r.Get("/person/{personId}", documentHandler.GetByPerson)
+				r.Get("/{id}", documentHandler.Get)
+				r.Put("/{id}", documentHandler.Update)
+				r.Delete("/{id}", documentHandler.Delete)
 			})
 
 			// Admin routes (requires admin privileges)
