@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { TrendingUp } from 'lucide-react';
+import { Anchor } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -27,13 +27,17 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
+      <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <TrendingUp className="h-12 w-12 text-primary" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-ocean shadow-md">
+              <Anchor className="h-7 w-7 text-primary-foreground" />
+            </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to wellf</CardTitle>
+          <CardTitle className="font-display text-2xl">
+            Welcome to <span className="text-gradient-ocean">Lyfboat</span>
+          </CardTitle>
           <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -71,7 +75,7 @@ export function Login() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-gradient-ocean hover:opacity-90" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
             <p className="text-sm text-muted-foreground text-center">

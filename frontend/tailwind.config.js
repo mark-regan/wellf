@@ -5,14 +5,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  safelist: [
-    'text-green-600',
-    'text-green-500',
-    'text-red-600',
-    'text-red-500',
-    'dark:text-green-500',
-    'dark:text-red-500',
-  ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -22,6 +15,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -56,24 +53,61 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        success: {
-          DEFAULT: "hsl(142, 76%, 36%)",
-          foreground: "hsl(0, 0%, 100%)",
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
+        // Module colors
+        finance: {
+          DEFAULT: "hsl(var(--finance))",
+          light: "hsl(var(--finance-light))",
+        },
+        household: {
+          DEFAULT: "hsl(var(--household))",
+          light: "hsl(var(--household-light))",
+        },
+        cooking: {
+          DEFAULT: "hsl(var(--cooking))",
+          light: "hsl(var(--cooking-light))",
+        },
+        reading: {
+          DEFAULT: "hsl(var(--reading))",
+          light: "hsl(var(--reading-light))",
+        },
+        coding: {
+          DEFAULT: "hsl(var(--coding))",
+          light: "hsl(var(--coding-light))",
+        },
+        plants: {
+          DEFAULT: "hsl(var(--plants))",
+          light: "hsl(var(--plants-light))",
+        },
+        calendar: {
+          DEFAULT: "hsl(var(--calendar))",
+          light: "hsl(var(--calendar-light))",
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
       },
       keyframes: {
         "accordion-down": {
-          from: { height: 0 },
+          from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
+          to: { height: "0" },
         },
       },
       animation: {
@@ -82,5 +116,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 }

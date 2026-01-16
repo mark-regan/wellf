@@ -2,10 +2,45 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { HubLayout } from '@/components/layout/HubLayout';
 import { portfolioApi } from '@/api/portfolios';
 import { HoldingWithPortfolio, CashAccount, AssetType } from '@/types';
 import { formatCurrency, formatPercentage, getChangeColor } from '@/utils/format';
-import { Filter, TrendingUp, TrendingDown, ExternalLink, Wallet, Landmark, Percent } from 'lucide-react';
+import {
+  Filter,
+  TrendingUp,
+  TrendingDown,
+  ExternalLink,
+  Wallet,
+  Landmark,
+  Percent,
+  LayoutDashboard,
+  FolderKanban,
+  PieChart,
+  LineChart,
+  CircleDollarSign,
+} from 'lucide-react';
+
+const financeNavItems = [
+  { label: 'Overview', href: '/finance', icon: LayoutDashboard },
+  { label: 'Portfolios', href: '/portfolios', icon: FolderKanban },
+  { label: 'Holdings', href: '/holdings', icon: PieChart },
+  { label: 'Charts', href: '/charts', icon: LineChart },
+  { label: 'Prices', href: '/prices', icon: CircleDollarSign },
+  { label: 'Fixed Assets', href: '/fixed-assets', icon: Landmark },
+];
+
+const FinanceLayout = ({ children }: { children: React.ReactNode }) => (
+  <HubLayout
+    title="Finance"
+    description="Track portfolios, investments, and financial goals"
+    icon={Wallet}
+    color="finance"
+    navItems={financeNavItems}
+  >
+    {children}
+  </HubLayout>
+);
 
 const ASSET_TYPES: { value: AssetType | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All Types' },
@@ -71,18 +106,21 @@ export function Holdings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
+      <FinanceLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </FinanceLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Holdings</h1>
-        <p className="text-muted-foreground">All your holdings across portfolios</p>
-      </div>
+    <FinanceLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-bold">Holdings</h1>
+          <p className="text-muted-foreground">All your holdings across portfolios</p>
+        </div>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -350,6 +388,7 @@ export function Holdings() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </FinanceLayout>
   );
 }

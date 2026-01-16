@@ -1,5 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#16a34a"/>
-  <path d="M6 20L10 12L14 16L18 8L22 14L26 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="26" cy="6" r="2" fill="white"/>
+  <!-- Ocean gradient background -->
+  <defs>
+    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d9488;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0284c7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#oceanGrad)"/>
+  <!-- Anchor icon -->
+  <g transform="translate(6, 5)" fill="white">
+    <!-- Anchor ring at top -->
+    <circle cx="10" cy="3" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
+    <!-- Anchor vertical bar -->
+    <rect x="9" y="5" width="2" height="12" rx="1"/>
+    <!-- Anchor crossbar -->
+    <rect x="5" y="9" width="10" height="2" rx="1"/>
+    <!-- Anchor flukes (curved ends) -->
+    <path d="M4 17 Q4 13 8 13" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <path d="M16 17 Q16 13 12 13" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  </g>
 </svg>

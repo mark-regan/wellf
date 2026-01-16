@@ -326,3 +326,13 @@ func isStrongPassword(password string) bool {
 
 	return hasUpper && hasLower && hasNumber && hasSpecial
 }
+
+// RequestAccountDeletion marks an account for deletion with a grace period
+func (s *AuthService) RequestAccountDeletion(ctx context.Context, userID uuid.UUID) error {
+	return s.userRepo.RequestDeletion(ctx, userID)
+}
+
+// DeleteAccount permanently deletes a user account and all associated data
+func (s *AuthService) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
+	return s.userRepo.Delete(ctx, userID)
+}

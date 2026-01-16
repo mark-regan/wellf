@@ -95,6 +95,37 @@ func main() {
 	txRepo := repository.NewTransactionRepository(db.Pool)
 	cashRepo := repository.NewCashAccountRepository(db.Pool)
 	fixedAssetRepo := repository.NewFixedAssetRepository(db.Pool)
+	activityRepo := repository.NewActivityRepository(db.Pool)
+
+	// Cooking module repositories
+	recipeRepo := repository.NewRecipeRepository(db.Pool)
+	collectionRepo := repository.NewCollectionRepository(db.Pool)
+	mealPlanRepo := repository.NewMealPlanRepository(db.Pool)
+	shoppingListRepo := repository.NewShoppingListRepository(db.Pool)
+
+	// Reading module repositories
+	bookRepo := repository.NewBookRepository(db.Pool)
+	readingListRepo := repository.NewReadingListRepository(db.Pool)
+	readingGoalRepo := repository.NewReadingGoalRepository(db.Pool)
+
+	// Plants module repositories
+	plantRepo := repository.NewPlantRepository(db.Pool)
+	plantCareLogRepo := repository.NewPlantCareLogRepository(db.Pool)
+	plantHealthLogRepo := repository.NewPlantHealthLogRepository(db.Pool)
+	plantPhotoRepo := repository.NewPlantPhotoRepository(db.Pool)
+
+	// Coding module repositories
+	githubConfigRepo := repository.NewGitHubConfigRepository(db.Pool)
+	snippetRepo := repository.NewSnippetRepository(db.Pool)
+	templateRepo := repository.NewTemplateRepository(db.Pool)
+	repoCacheRepo := repository.NewGitHubRepoCacheRepository(db.Pool)
+
+	// Calendar module repositories
+	calendarConfigRepo := repository.NewCalendarConfigRepository(db.Pool)
+	reminderRepo := repository.NewReminderRepository(db.Pool)
+
+	// Household module repository
+	householdRepo := repository.NewHouseholdRepository(db.Pool)
 
 	// Initialize Yahoo client and service
 	yahooClient := yahoo.NewClient()
@@ -112,8 +143,43 @@ func main() {
 	cashHandler := handlers.NewCashAccountHandler(cashRepo, portfolioRepo)
 	fixedAssetHandler := handlers.NewFixedAssetHandler(fixedAssetRepo)
 	dashboardHandler := handlers.NewDashboardHandler(portfolioRepo, holdingRepo, txRepo, cashRepo, fixedAssetRepo, userRepo, yahooService)
+	hubHandler := handlers.NewHubHandler(portfolioRepo, holdingRepo, cashRepo, fixedAssetRepo, userRepo, activityRepo, yahooService)
+	hubHandler.SetRecipeRepo(recipeRepo)
+	hubHandler.SetReadingRepos(bookRepo, readingListRepo)
+	hubHandler.SetPlantRepo(plantRepo)
 	healthHandler := handlers.NewHealthHandler(db, redis)
 	adminHandler := handlers.NewAdminHandler(userRepo)
+	cookingHandler := handlers.NewCookingHandler(recipeRepo, collectionRepo, mealPlanRepo, shoppingListRepo, activityRepo)
+	readingHandler := handlers.NewReadingHandler(bookRepo, readingListRepo, readingGoalRepo)
+	plantHandler := handlers.NewPlantHandler(plantRepo, plantCareLogRepo, plantHealthLogRepo)
+
+	// Initialize file upload service for plant photos
+	uploadDir := "./uploads"
+	uploadBaseURL := "/uploads"
+	fileUploadService := services.NewFileUploadService(uploadDir, uploadBaseURL)
+	plantHandler.SetPhotoRepo(plantPhotoRepo)
+	plantHandler.SetUploadService(fileUploadService)
+
+	codingHandler := handlers.NewCodingHandler(githubConfigRepo, snippetRepo, templateRepo, repoCacheRepo)
+
+	// Set coding repos on hub handler for summary integration
+	hubHandler.SetCodingRepos(githubConfigRepo, snippetRepo, repoCacheRepo)
+
+	// Set household repo on hub handler for summary integration
+	hubHandler.SetHouseholdRepo(householdRepo)
+
+	// Initialize reminder generator and calendar handler
+	reminderGenerator := services.NewReminderGenerator(reminderRepo, plantRepo)
+	reminderGenerator.SetHouseholdRepo(householdRepo)
+	calendarHandler := handlers.NewCalendarHandler(calendarConfigRepo, reminderRepo, reminderGenerator)
+
+	// Initialize security services and handler
+	dataExportService := services.NewDataExportService(db.Pool)
+	totpService := services.NewTOTPService(db.Pool, "LIYF")
+	securityHandler := handlers.NewSecurityHandler(dataExportService, totpService, authService)
+
+	// Initialize household handler
+	householdHandler := handlers.NewHouseholdHandler(householdRepo)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -138,6 +204,13 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+
+	// Serve uploaded files
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		logger.Error("failed to create uploads directory", "error", err)
+	}
+	fileServer := http.FileServer(http.Dir(uploadDir))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads", fileServer))
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -219,6 +292,72 @@ func main() {
 			r.Get("/dashboard/allocation", dashboardHandler.Allocation)
 			r.Get("/dashboard/top-movers", dashboardHandler.TopMovers)
 			r.Get("/dashboard/performance", dashboardHandler.Performance)
+
+			// Hub (LiyfHub)
+			r.Get("/hub/summary", hubHandler.Summary)
+			r.Get("/hub/activity", hubHandler.Activity)
+			r.Get("/hub/upcoming", hubHandler.Upcoming)
+			r.Post("/activity", hubHandler.LogActivity)
+
+			// Cooking Module
+			r.Route("/recipes", func(r chi.Router) {
+				r.Get("/", cookingHandler.ListRecipes)
+				r.Post("/", cookingHandler.CreateRecipe)
+				r.Post("/import-url", cookingHandler.ImportFromURL)
+				r.Get("/search-by-ingredients", cookingHandler.SearchByIngredients)
+				r.Post("/search-by-ingredients", cookingHandler.SearchByIngredients)
+				r.Get("/{id}", cookingHandler.GetRecipe)
+				r.Put("/{id}", cookingHandler.UpdateRecipe)
+				r.Delete("/{id}", cookingHandler.DeleteRecipe)
+				r.Post("/{id}/cook", cookingHandler.MarkRecipeCooked)
+				r.Post("/{id}/favourite", cookingHandler.ToggleFavourite)
+			})
+
+			r.Route("/recipe-collections", func(r chi.Router) {
+				r.Get("/", cookingHandler.ListCollections)
+				r.Post("/", cookingHandler.CreateCollection)
+				r.Get("/{id}", cookingHandler.GetCollection)
+				r.Put("/{id}", cookingHandler.UpdateCollection)
+				r.Delete("/{id}", cookingHandler.DeleteCollection)
+				r.Post("/{id}/recipes", cookingHandler.AddRecipeToCollection)
+				r.Delete("/{id}/recipes/{recipeId}", cookingHandler.RemoveRecipeFromCollection)
+			})
+
+			r.Route("/meal-plans", func(r chi.Router) {
+				r.Get("/", cookingHandler.GetMealPlans)
+				r.Post("/", cookingHandler.CreateMealPlan)
+				r.Delete("/{id}", cookingHandler.DeleteMealPlan)
+				r.Post("/{id}/cook", cookingHandler.MarkMealCooked)
+				r.Post("/generate-list", cookingHandler.GenerateShoppingList)
+			})
+
+			r.Route("/shopping-list", func(r chi.Router) {
+				r.Get("/", cookingHandler.GetShoppingList)
+				r.Post("/", cookingHandler.AddShoppingItem)
+				r.Put("/{id}", cookingHandler.ToggleShoppingItem)
+				r.Delete("/{id}", cookingHandler.DeleteShoppingItem)
+				r.Delete("/checked", cookingHandler.ClearCheckedItems)
+			})
+
+			r.Get("/cooking/summary", cookingHandler.GetCookingSummary)
+
+			// Reading Module
+			r.Mount("/books", readingHandler.Routes())
+
+			// Plants Module
+			r.Mount("/plants", plantHandler.Routes())
+
+			// Coding Module
+			r.Mount("/coding", codingHandler.Routes())
+
+			// Calendar Module
+			r.Mount("/calendar", calendarHandler.Routes())
+
+			// Security (export, 2FA, account management)
+			r.Mount("/security", securityHandler.Routes())
+
+			// Household Module
+			r.Mount("/household", householdHandler.Routes())
 
 			// Admin routes (requires admin privileges)
 			r.Route("/admin", func(r chi.Router) {

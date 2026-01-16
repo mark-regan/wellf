@@ -3,14 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files (exclude package-lock.json for cross-arch compatibility)
+COPY package.json ./
 
-# Install dependencies
+# Install dependencies fresh for this architecture
 RUN npm install
 
 # Copy source code (includes .env.production with VITE_API_URL)
 COPY . .
+
+# Remove any platform-specific modules and reinstall
+RUN rm -rf node_modules/.cache && npm rebuild
 
 # Build the application - Vite will read from .env.production
 RUN npm run build

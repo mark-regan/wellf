@@ -2,19 +2,35 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { HubLayout } from '@/components/layout/HubLayout';
 import { dashboardApi } from '@/api/dashboard';
 import { useAuthStore } from '@/store/auth';
 import { NetWorthSummary, AssetAllocation, TopMover } from '@/types';
 import { formatCurrency, formatPercentage, getChangeColor } from '@/utils/format';
 import {
+  Wallet,
   TrendingUp,
   TrendingDown,
   Briefcase,
-  Wallet,
   Building2,
   ArrowRight,
   Target,
+  LayoutDashboard,
+  FolderKanban,
+  PieChart,
+  LineChart,
+  CircleDollarSign,
+  Landmark,
 } from 'lucide-react';
+
+const financeNavItems = [
+  { label: 'Overview', href: '/finance', icon: LayoutDashboard },
+  { label: 'Portfolios', href: '/portfolios', icon: FolderKanban },
+  { label: 'Holdings', href: '/holdings', icon: PieChart },
+  { label: 'Charts', href: '/charts', icon: LineChart },
+  { label: 'Prices', href: '/prices', icon: CircleDollarSign },
+  { label: 'Fixed Assets', href: '/fixed-assets', icon: Landmark },
+];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -52,18 +68,29 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
+      <HubLayout
+        title="Finance"
+        description="Track portfolios, investments, and financial goals"
+        icon={Wallet}
+        color="finance"
+        navItems={financeNavItems}
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </HubLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Welcome{user?.display_name ? `, ${user.display_name}` : ''}</h1>
-        <p className="text-muted-foreground">Your financial overview</p>
-      </div>
+    <HubLayout
+      title="Finance"
+      description="Track portfolios, investments, and financial goals"
+      icon={Wallet}
+      color="finance"
+      navItems={financeNavItems}
+    >
+      <div className="space-y-6">
 
       {/* Net Worth Summary */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -311,6 +338,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </HubLayout>
   );
 }

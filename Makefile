@@ -1,19 +1,25 @@
 .PHONY: help dev build test lint migrate seed clean logs shell-api shell-db stop
 
+# Development compose file
+COMPOSE_DEV = docker-compose -f docker-compose.dev.yml
+
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 dev: ## Start development environment
-	docker-compose up --build
+	$(COMPOSE_DEV) up --build
 
 dev-detach: ## Start development environment in background
-	docker-compose up --build -d
+	$(COMPOSE_DEV) up --build -d
 
-build: ## Build production images
-	docker-compose build
+dev-tools: ## Start development environment with adminer
+	$(COMPOSE_DEV) --profile tools up --build
+
+build: ## Build development images
+	$(COMPOSE_DEV) build
 
 stop: ## Stop all containers
-	docker-compose down
+	$(COMPOSE_DEV) down
 
 test: ## Run all tests
 	cd api && go test -v -cover ./...
@@ -33,28 +39,28 @@ lint: ## Run linters
 	cd frontend && npm run lint
 
 migrate: ## Run database migrations
-	docker-compose exec api ./migrate up
+	$(COMPOSE_DEV) exec api ./migrate up
 
 migrate-down: ## Rollback last migration
-	docker-compose exec api ./migrate down 1
+	$(COMPOSE_DEV) exec api ./migrate down 1
 
 seed: ## Seed test data
-	docker-compose exec api ./seed
+	$(COMPOSE_DEV) exec api ./seed
 
 clean: ## Clean up containers and volumes
-	docker-compose down -v --remove-orphans
+	$(COMPOSE_DEV) down -v --remove-orphans
 
 logs: ## View container logs
-	docker-compose logs -f
+	$(COMPOSE_DEV) logs -f
 
 logs-api: ## View API logs only
-	docker-compose logs -f api
+	$(COMPOSE_DEV) logs -f api
 
 shell-api: ## Shell into API container
-	docker-compose exec api sh
+	$(COMPOSE_DEV) exec api sh
 
 shell-db: ## Shell into database
-	docker-compose exec db psql -U wellf
+	$(COMPOSE_DEV) exec db psql -U wellf
 
 setup: ## Initial project setup
 	cp .env.example .env

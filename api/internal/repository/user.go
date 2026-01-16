@@ -385,3 +385,43 @@ func (r *UserRepository) CountAdmins(ctx context.Context) (int, error) {
 	err := r.pool.QueryRow(ctx, query).Scan(&count)
 	return count, err
 }
+
+// RequestDeletion marks a user account for deletion with a grace period
+func (r *UserRepository) RequestDeletion(ctx context.Context, id uuid.UUID) error {
+	query := `
+		UPDATE users
+		SET deletion_requested_at = $2, updated_at = $2
+		WHERE id = $1
+	`
+
+	result, err := r.pool.Exec(ctx, query, id, time.Now())
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}
+
+// CancelDeletionRequest cancels a pending account deletion
+func (r *UserRepository) CancelDeletionRequest(ctx context.Context, id uuid.UUID) error {
+	query := `
+		UPDATE users
+		SET deletion_requested_at = NULL, updated_at = $2
+		WHERE id = $1
+	`
+
+	result, err := r.pool.Exec(ctx, query, id, time.Now())
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { HubLayout } from '@/components/layout/HubLayout';
 import { assetApi } from '@/api/assets';
 import { portfolioApi } from '@/api/portfolios';
 import { useAuthStore } from '@/store/auth';
@@ -24,7 +25,34 @@ import {
   Settings,
   LineChart,
   X,
+  Wallet,
+  LayoutDashboard,
+  FolderKanban,
+  PieChart,
+  CircleDollarSign,
+  Landmark,
 } from 'lucide-react';
+
+const financeNavItems = [
+  { label: 'Overview', href: '/finance', icon: LayoutDashboard },
+  { label: 'Portfolios', href: '/portfolios', icon: FolderKanban },
+  { label: 'Holdings', href: '/holdings', icon: PieChart },
+  { label: 'Charts', href: '/charts', icon: TrendingUp },
+  { label: 'Prices', href: '/prices', icon: CircleDollarSign },
+  { label: 'Fixed Assets', href: '/fixed-assets', icon: Landmark },
+];
+
+const FinanceLayout = ({ children }: { children: React.ReactNode }) => (
+  <HubLayout
+    title="Finance"
+    description="Track portfolios, investments, and financial goals"
+    icon={Wallet}
+    color="finance"
+    navItems={financeNavItems}
+  >
+    {children}
+  </HubLayout>
+);
 
 // Default indices to show
 const DEFAULT_INDICES = [
@@ -431,22 +459,25 @@ export function Prices() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Current Prices</h1>
+      <FinanceLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="font-display text-2xl font-bold">Current Prices</h1>
+          </div>
+          <div className="flex items-center justify-center h-64 text-muted-foreground">
+            Loading prices...
+          </div>
         </div>
-        <div className="flex items-center justify-center h-64 text-muted-foreground">
-          Loading prices...
-        </div>
-      </div>
+      </FinanceLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Current Prices</h1>
+    <FinanceLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl font-bold">Current Prices</h1>
         <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -532,13 +563,14 @@ export function Prices() {
         </div>
       </div>
 
-      {/* Chart Modal */}
-      {selectedQuote && (
-        <ChartModal
-          quote={selectedQuote}
-          onClose={() => setSelectedQuote(null)}
-        />
-      )}
-    </div>
+        {/* Chart Modal */}
+        {selectedQuote && (
+          <ChartModal
+            quote={selectedQuote}
+            onClose={() => setSelectedQuote(null)}
+          />
+        )}
+      </div>
+    </FinanceLayout>
   );
 }

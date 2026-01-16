@@ -9,11 +9,12 @@ import {
   LineChart,
   LogOut,
   User,
-  TrendingUp,
+  Compass,
   Settings,
   DollarSign,
   ChevronDown,
   Shield,
+  Home,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -21,7 +22,8 @@ interface LayoutProps {
 }
 
 const baseNavItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/', label: 'Hub', icon: Home },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/portfolios', label: 'Portfolios', icon: Briefcase },
   { path: '/holdings', label: 'Holdings', icon: PieChart },
   { path: '/charts', label: 'Charts', icon: LineChart },
@@ -66,8 +68,8 @@ export function Layout({ children }: LayoutProps) {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2">
-              <TrendingUp className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">wellf</span>
+              <Compass className="h-6 w-6 text-primary" />
+              <span className="text-xl font-bold">liyf</span>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {[...baseNavItems, ...(user?.is_admin ? [adminNavItem] : [])].map((item) => {

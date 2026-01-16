@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { HubLayout } from '@/components/layout/HubLayout';
 import { dashboardApi } from '@/api/dashboard';
 import { portfolioApi } from '@/api/portfolios';
 import { assetApi } from '@/api/assets';
@@ -18,7 +19,42 @@ import {
   LineChart,
   Legend,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Calendar, CalendarRange, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  CalendarRange,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Wallet,
+  LayoutDashboard,
+  FolderKanban,
+  PieChart,
+  CircleDollarSign,
+  Landmark,
+} from 'lucide-react';
+
+const financeNavItems = [
+  { label: 'Overview', href: '/finance', icon: LayoutDashboard },
+  { label: 'Portfolios', href: '/portfolios', icon: FolderKanban },
+  { label: 'Holdings', href: '/holdings', icon: PieChart },
+  { label: 'Charts', href: '/charts', icon: TrendingUp },
+  { label: 'Prices', href: '/prices', icon: CircleDollarSign },
+  { label: 'Fixed Assets', href: '/fixed-assets', icon: Landmark },
+];
+
+const FinanceLayout = ({ children }: { children: React.ReactNode }) => (
+  <HubLayout
+    title="Finance"
+    description="Track portfolios, investments, and financial goals"
+    icon={Wallet}
+    color="finance"
+    navItems={financeNavItems}
+  >
+    {children}
+  </HubLayout>
+);
 
 const PERIODS: { value: PerformancePeriod; label: string; description: string; maxDays: number }[] = [
   { value: 'daily', label: 'Daily', description: 'Max 30 days', maxDays: 30 },
@@ -361,11 +397,12 @@ export function Charts() {
   const { domain: yDomain, ticks: yTicks } = calculateNiceTicks(rawMin * 0.95, rawMax * 1.05);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Performance Charts</h1>
-        <p className="text-muted-foreground">Track your portfolio performance over time</p>
-      </div>
+    <FinanceLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-bold">Performance Charts</h1>
+          <p className="text-muted-foreground">Track your portfolio performance over time</p>
+        </div>
 
       {/* Controls */}
       <Card>
@@ -731,6 +768,7 @@ export function Charts() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </FinanceLayout>
   );
 }

@@ -1,27 +1,51 @@
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { HubLayout } from '@/components/layout/HubLayout';
+import { AddFixedAssetModal } from '@/components/finance/AddFixedAssetModal';
 import { fixedAssetApi } from '@/api/assets';
 import { FixedAsset } from '@/types';
 import { formatCurrency, formatPercentage, formatDate, getChangeColor } from '@/utils/format';
-import { Plus, Building2, Trash2, Edit2 } from 'lucide-react';
+import {
+  Plus,
+  Building2,
+  Trash2,
+  Edit2,
+  Wallet,
+  LayoutDashboard,
+  FolderKanban,
+  PieChart,
+  TrendingUp,
+  CircleDollarSign,
+  Landmark,
+} from 'lucide-react';
 
-const CATEGORIES = ['PROPERTY', 'VEHICLE', 'COLLECTIBLE', 'OTHER'];
+const financeNavItems = [
+  { label: 'Overview', href: '/finance', icon: LayoutDashboard },
+  { label: 'Portfolios', href: '/portfolios', icon: FolderKanban },
+  { label: 'Holdings', href: '/holdings', icon: PieChart },
+  { label: 'Charts', href: '/charts', icon: TrendingUp },
+  { label: 'Prices', href: '/prices', icon: CircleDollarSign },
+  { label: 'Fixed Assets', href: '/fixed-assets', icon: Landmark },
+];
+
+const FinanceLayout = ({ children }: { children: React.ReactNode }) => (
+  <HubLayout
+    title="Finance"
+    description="Track portfolios, investments, and financial goals"
+    icon={Wallet}
+    color="finance"
+    navItems={financeNavItems}
+  >
+    {children}
+  </HubLayout>
+);
 
 export function FixedAssets() {
   const [assets, setAssets] = useState<FixedAsset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
-
-  // Form state
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('PROPERTY');
-  const [currentValue, setCurrentValue] = useState('');
-  const [purchasePrice, setPurchasePrice] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState('');
-  const [description, setDescription] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<FixedAsset | null>(null);
 
   const loadAssets = async () => {
     try {
@@ -38,36 +62,15 @@ export function FixedAssets() {
     loadAssets();
   }, []);
 
-  const resetForm = () => {
-    setName('');
-    setCategory('PROPERTY');
-    setCurrentValue('');
-    setPurchasePrice('');
-    setPurchaseDate('');
-    setDescription('');
+  const handleEdit = (asset: FixedAsset) => {
+    setEditingAsset(asset);
+    setShowAddModal(true);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !currentValue) return;
-
-    setCreating(true);
-    try {
-      await fixedAssetApi.create({
-        name,
-        category,
-        current_value: parseFloat(currentValue),
-        purchase_price: purchasePrice ? parseFloat(purchasePrice) : undefined,
-        purchase_date: purchaseDate || undefined,
-        description: description || undefined,
-      });
-      resetForm();
-      setShowCreate(false);
-      loadAssets();
-    } catch (error) {
-      console.error('Failed to create fixed asset:', error);
-    } finally {
-      setCreating(false);
+  const handleModalClose = (open: boolean) => {
+    setShowAddModal(open);
+    if (!open) {
+      setEditingAsset(null);
     }
   };
 
@@ -85,23 +88,34 @@ export function FixedAssets() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
+      <FinanceLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </FinanceLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Fixed Assets</h1>
-          <p className="text-muted-foreground">Property, vehicles, and other valuables</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>
+    <FinanceLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold">Fixed Assets</h1>
+            <p className="text-muted-foreground">Property, vehicles, and other valuables</p>
+          </div>
+        <Button onClick={() => setShowAddModal(true)}>
           <Plus className="mr-2 h-4 w-4" /> Add Asset
         </Button>
       </div>
+
+      {/* Add/Edit Fixed Asset Modal */}
+      <AddFixedAssetModal
+        open={showAddModal}
+        onOpenChange={handleModalClose}
+        asset={editingAsset}
+        onSuccess={loadAssets}
+      />
 
       {/* Total Value Card */}
       <Card>
@@ -113,89 +127,6 @@ export function FixedAssets() {
         </CardContent>
       </Card>
 
-      {/* Create Form */}
-      {showCreate && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Fixed Asset</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <Input
-                    placeholder="e.g., Main Residence"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Current Value</label>
-                  <Input
-                    type="number"
-                    step="any"
-                    placeholder="425000"
-                    value={currentValue}
-                    onChange={(e) => setCurrentValue(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Purchase Price (optional)</label>
-                  <Input
-                    type="number"
-                    step="any"
-                    placeholder="350000"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Purchase Date (optional)</label>
-                  <Input
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description (optional)</label>
-                  <Input
-                    placeholder="Additional notes"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={creating}>
-                  {creating ? 'Creating...' : 'Add Asset'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Assets List */}
       {assets.length === 0 ? (
         <Card>
@@ -205,7 +136,7 @@ export function FixedAssets() {
             <p className="text-muted-foreground mb-4">
               Add properties, vehicles, or other valuables to track
             </p>
-            <Button onClick={() => setShowCreate(true)}>
+            <Button onClick={() => setShowAddModal(true)}>
               <Plus className="mr-2 h-4 w-4" /> Add Asset
             </Button>
           </CardContent>
@@ -245,7 +176,7 @@ export function FixedAssets() {
                     <div className="text-sm text-muted-foreground">{asset.description}</div>
                   )}
                   <div className="flex gap-2 pt-2">
-                    <Button variant="ghost" size="sm" disabled>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(asset)}>
                       <Edit2 className="h-4 w-4 mr-1" /> Edit
                     </Button>
                     <Button
@@ -263,6 +194,7 @@ export function FixedAssets() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </FinanceLayout>
   );
 }

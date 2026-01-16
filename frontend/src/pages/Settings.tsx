@@ -3,11 +3,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PageLayout } from '@/components/layout/PageLayout';
 import { authApi } from '@/api/auth';
+import { securityApi } from '@/api/security';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
 import { Theme } from '@/types';
-import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut, Building2, RotateCcw } from 'lucide-react';
+import { User, Palette, DollarSign, Bell, Shield, Sun, Moon, Monitor, Download, Trash2, Star, X, Plus, Search, LogOut, Building2, RotateCcw, Settings as SettingsIcon, ArrowLeft, LayoutGrid, Wallet, Home, ChefHat, BookOpen, Code2, Leaf, Key, Copy, Check, AlertTriangle } from 'lucide-react';
 import { assetApi } from '@/api/assets';
 import { AssetSearchResult, ProviderLists, PortfolioType } from '@/types';
 import { DEFAULT_PROVIDERS, PORTFOLIO_TYPE_LABELS, parseProviderLists, stringifyProviderLists } from '@/constants/providers';
@@ -49,17 +51,30 @@ const LOCALES = [
   { value: 'zh-CN', label: 'Chinese (Simplified)' },
 ];
 
-type Section = 'profile' | 'appearance' | 'financial' | 'notifications' | 'security' | 'watchlist' | 'providers';
+type Section = 'profile' | 'appearance' | 'financial' | 'notifications' | 'security' | 'watchlist' | 'providers' | 'modules';
 
-const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'financial', label: 'Financial', icon: DollarSign },
-  { id: 'providers', label: 'Providers', icon: Building2 },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'watchlist', label: 'Watchlist', icon: Star },
+const SETTINGS_SECTIONS: { id: Section; label: string; description: string; icon: React.ElementType }[] = [
+  { id: 'profile', label: 'Profile', description: 'Manage your account details', icon: User },
+  { id: 'appearance', label: 'Appearance', description: 'Customize the look and feel', icon: Palette },
+  { id: 'modules', label: 'Modules', description: 'Enable or disable app modules', icon: LayoutGrid },
+  { id: 'financial', label: 'Financial', description: 'Configure money preferences', icon: DollarSign },
+  { id: 'providers', label: 'Providers', description: 'Manage portfolio providers', icon: Building2 },
+  { id: 'notifications', label: 'Notifications', description: 'Configure alerts and reminders', icon: Bell },
+  { id: 'security', label: 'Security', description: 'Manage access and data', icon: Shield },
+  { id: 'watchlist', label: 'Watchlist', description: 'Track additional tickers', icon: Star },
 ];
+
+// Module definitions
+const AVAILABLE_MODULES = [
+  { id: 'finance', label: 'Finance', description: 'Track portfolios, investments, and financial goals', icon: Wallet },
+  { id: 'household', label: 'Household', description: 'Manage bills, subscriptions, insurance & maintenance', icon: Home },
+  { id: 'cooking', label: 'Cooking', description: 'Recipes, shopping lists, and meal planning', icon: ChefHat },
+  { id: 'reading', label: 'Reading', description: 'Book reviews, reading lists, and recommendations', icon: BookOpen },
+  { id: 'coding', label: 'Coding', description: 'GitHub repos, projects, and development notes', icon: Code2 },
+  { id: 'plants', label: 'Plants', description: 'Plant catalog, care schedules, and gardening tasks', icon: Leaf },
+];
+
+const DEFAULT_ENABLED_MODULES = ['finance', 'household', 'cooking', 'reading', 'coding', 'plants'];
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
   return (
@@ -124,10 +139,36 @@ export function Settings() {
   const [providerLists, setProviderLists] = useState<ProviderLists>({});
   const [newProvider, setNewProvider] = useState<Record<string, string>>({});
 
+  // Modules state
+  const [enabledModules, setEnabledModules] = useState<string[]>(() => {
+    const saved = localStorage.getItem('enabledModules');
+    return saved ? JSON.parse(saved) : DEFAULT_ENABLED_MODULES;
+  });
+
   // UI state
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // 2FA state
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [showTwoFASetup, setShowTwoFASetup] = useState(false);
+  const [totpSecret, setTotpSecret] = useState('');
+  const [totpQRUrl, setTotpQRUrl] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Data export state
+  const [exporting, setExporting] = useState(false);
+
+  // Account deletion state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -147,6 +188,19 @@ export function Settings() {
       setProviderLists(parseProviderLists(user.provider_lists));
     }
   }, [user]);
+
+  // Fetch 2FA status on mount
+  useEffect(() => {
+    const fetch2FAStatus = async () => {
+      try {
+        const status = await securityApi.get2FAStatus();
+        setTwoFAEnabled(status.enabled);
+      } catch {
+        // 2FA not configured or error - ignore
+      }
+    };
+    fetch2FAStatus();
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -215,9 +269,147 @@ export function Settings() {
     }
   };
 
-  const handleExportData = () => {
-    // TODO: Implement data export
-    setMessage({ type: 'success', text: 'Data export will be sent to your email' });
+  const handleExportData = async () => {
+    setExporting(true);
+    setMessage(null);
+    try {
+      const blob = await securityApi.downloadExport();
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `liyf-export-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setMessage({ type: 'success', text: 'Data exported successfully' });
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to export data' });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // 2FA functions
+  const handleSetup2FA = async () => {
+    setTwoFALoading(true);
+    setMessage(null);
+    try {
+      const setup = await securityApi.setup2FA();
+      setTotpSecret(setup.secret);
+      setTotpQRUrl(setup.otp_auth_url);
+      setShowTwoFASetup(true);
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to setup 2FA' });
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleEnable2FA = async () => {
+    if (verificationCode.length !== 6) {
+      setMessage({ type: 'error', text: 'Please enter a 6-digit code' });
+      return;
+    }
+    setTwoFALoading(true);
+    setMessage(null);
+    try {
+      const result = await securityApi.enable2FA(totpSecret, verificationCode);
+      if (result.success) {
+        setTwoFAEnabled(true);
+        setBackupCodes(result.backup_codes);
+        setShowBackupCodes(true);
+        setShowTwoFASetup(false);
+        setVerificationCode('');
+        setMessage({ type: 'success', text: '2FA enabled successfully! Save your backup codes.' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Invalid verification code' });
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (verificationCode.length !== 6) {
+      setMessage({ type: 'error', text: 'Please enter a 6-digit code' });
+      return;
+    }
+    setTwoFALoading(true);
+    setMessage(null);
+    try {
+      await securityApi.disable2FA(verificationCode);
+      setTwoFAEnabled(false);
+      setVerificationCode('');
+      setMessage({ type: 'success', text: '2FA disabled successfully' });
+    } catch {
+      setMessage({ type: 'error', text: 'Invalid verification code' });
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleGenerateBackupCodes = async () => {
+    if (verificationCode.length !== 6) {
+      setMessage({ type: 'error', text: 'Please enter a 6-digit code' });
+      return;
+    }
+    setTwoFALoading(true);
+    setMessage(null);
+    try {
+      const result = await securityApi.generateBackupCodes(verificationCode);
+      setBackupCodes(result.backup_codes);
+      setShowBackupCodes(true);
+      setVerificationCode('');
+      setMessage({ type: 'success', text: 'New backup codes generated' });
+    } catch {
+      setMessage({ type: 'error', text: 'Invalid verification code' });
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCode(text);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  // Account deletion functions
+  const handleRequestDeletion = async () => {
+    if (!deletePassword) {
+      setMessage({ type: 'error', text: 'Please enter your password' });
+      return;
+    }
+    setDeleting(true);
+    setMessage(null);
+    try {
+      await securityApi.requestAccountDeletion(deletePassword);
+      setShowDeleteConfirm(true);
+    } catch {
+      setMessage({ type: 'error', text: 'Invalid password' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConfirmDeletion = async () => {
+    if (deleteConfirmText !== 'DELETE MY ACCOUNT') {
+      setMessage({ type: 'error', text: 'Please type "DELETE MY ACCOUNT" to confirm' });
+      return;
+    }
+    setDeleting(true);
+    setMessage(null);
+    try {
+      await securityApi.confirmAccountDeletion(deletePassword, deleteConfirmText);
+      await logout();
+      navigate('/login');
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to delete account' });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Watchlist functions
@@ -351,42 +543,108 @@ export function Settings() {
     navigate('/login');
   };
 
+  // Module toggle handler
+  const handleToggleModule = (moduleId: string) => {
+    const newEnabled = enabledModules.includes(moduleId)
+      ? enabledModules.filter(id => id !== moduleId)
+      : [...enabledModules, moduleId];
+    setEnabledModules(newEnabled);
+    localStorage.setItem('enabledModules', JSON.stringify(newEnabled));
+    setMessage({ type: 'success', text: `Module ${enabledModules.includes(moduleId) ? 'disabled' : 'enabled'}` });
+  };
+
+  // Check if we're on the overview or a specific section
+  const isOverview = !searchParams.get('section');
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Sidebar Navigation */}
-      <div className="lg:w-64 flex-shrink-0">
-        <Card>
-          <CardContent className="p-2">
-            <nav className="space-y-1">
-              {NAV_ITEMS.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
-                    activeSection === item.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </button>
-              ))}
-              <div className="border-t my-2" />
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors hover:bg-muted text-red-600"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </nav>
-          </CardContent>
-        </Card>
+    <PageLayout>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-8">
+        {!isOverview && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSearchParams({})}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
+          <SettingsIcon className="h-6 w-6 text-secondary-foreground" />
+        </div>
+        <div>
+          <h1 className="font-display text-2xl font-bold">
+            {isOverview ? 'Settings' : SETTINGS_SECTIONS.find(s => s.id === activeSection)?.label}
+          </h1>
+          <p className="text-muted-foreground">
+            {isOverview ? 'Configure your LIYF experience' : SETTINGS_SECTIONS.find(s => s.id === activeSection)?.description}
+          </p>
+        </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 max-w-2xl">
+      {/* Overview Mode - Card Grid */}
+      {isOverview ? (
+        <>
+          {/* Quick Actions */}
+          <Card className="p-4 bg-card border-border/50 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Dark Mode</p>
+                <p className="text-sm text-muted-foreground">
+                  Currently using {theme === 'dark' ? 'dark' : theme === 'light' ? 'light' : 'system'} theme
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => handleThemeChange(theme === 'dark' ? 'light' : 'dark')}
+              >
+                {theme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+                Switch to {theme === 'dark' ? 'Light' : 'Dark'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Settings Grid */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            {SETTINGS_SECTIONS.map((section) => (
+              <Card
+                key={section.id}
+                onClick={() => setSection(section.id)}
+                className="p-5 bg-card border-border/50 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                    <section.icon className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{section.label}</h3>
+                    <p className="text-sm text-muted-foreground">{section.description}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Logout Button */}
+          <Card className="p-4 bg-card border-border/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-red-600">Sign Out</p>
+                <p className="text-sm text-muted-foreground">
+                  Log out of your account
+                </p>
+              </div>
+              <Button variant="destructive" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </Card>
+        </>
+      ) : (
+        /* Detail Mode - Section Content */
+        <div className="max-w-2xl">
         {message && (
           <div
             className={`mb-6 p-4 rounded-lg ${
@@ -516,6 +774,41 @@ export function Settings() {
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Modules Section */}
+        {activeSection === 'modules' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Modules</CardTitle>
+              <CardDescription>Enable or disable app modules to customize your experience</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {AVAILABLE_MODULES.map((module) => (
+                <div
+                  key={module.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                      <module.icon className="h-5 w-5 text-secondary-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{module.label}</p>
+                      <p className="text-sm text-muted-foreground">{module.description}</p>
+                    </div>
+                  </div>
+                  <Toggle
+                    checked={enabledModules.includes(module.id)}
+                    onChange={() => handleToggleModule(module.id)}
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-2">
+                Disabled modules will be hidden from the home page. You can re-enable them at any time.
+              </p>
             </CardContent>
           </Card>
         )}
@@ -689,16 +982,155 @@ export function Settings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Two-Factor Authentication</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Two-Factor Authentication
+                </CardTitle>
                 <CardDescription>Add an extra layer of security to your account</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Two-factor authentication adds an additional layer of security to your account by requiring a code from your phone in addition to your password.
-                </p>
-                <Button variant="outline" disabled>
-                  Coming Soon
-                </Button>
+              <CardContent className="space-y-4">
+                {!twoFAEnabled && !showTwoFASetup && (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Two-factor authentication adds an additional layer of security to your account by requiring a code from your authenticator app.
+                    </p>
+                    <Button onClick={handleSetup2FA} disabled={twoFALoading}>
+                      {twoFALoading ? 'Setting up...' : 'Enable 2FA'}
+                    </Button>
+                  </>
+                )}
+
+                {showTwoFASetup && (
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-lg bg-muted/30">
+                      <p className="text-sm font-medium mb-3">1. Scan this QR code with your authenticator app:</p>
+                      <div className="flex justify-center mb-4">
+                        <div className="p-4 bg-white rounded-lg">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpQRUrl)}`}
+                            alt="2FA QR Code"
+                            className="w-48 h-48"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mb-2">Or enter this secret manually:</p>
+                      <div className="flex items-center gap-2 justify-center">
+                        <code className="px-3 py-2 bg-muted rounded text-sm font-mono">{totpSecret}</code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(totpSecret)}
+                        >
+                          {copiedCode === totpSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium mb-2">2. Enter the 6-digit code from your app:</p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="000000"
+                          className="font-mono text-center text-lg tracking-widest"
+                          maxLength={6}
+                        />
+                        <Button onClick={handleEnable2FA} disabled={twoFALoading || verificationCode.length !== 6}>
+                          {twoFALoading ? 'Verifying...' : 'Verify'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button variant="outline" onClick={() => setShowTwoFASetup(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+
+                {twoFAEnabled && !showTwoFASetup && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Check className="h-5 w-5" />
+                      <span className="font-medium">2FA is enabled</span>
+                    </div>
+
+                    <div className="space-y-3 p-4 border rounded-lg">
+                      <p className="text-sm font-medium">Manage 2FA:</p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="Enter code to manage"
+                          className="font-mono"
+                          maxLength={6}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGenerateBackupCodes}
+                          disabled={twoFALoading || verificationCode.length !== 6}
+                        >
+                          Generate New Backup Codes
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDisable2FA}
+                          disabled={twoFALoading || verificationCode.length !== 6}
+                        >
+                          Disable 2FA
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showBackupCodes && backupCodes.length > 0 && (
+                  <div className="p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Save your backup codes!</p>
+                    </div>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                      These codes can be used to access your account if you lose your authenticator device. Each code can only be used once.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {backupCodes.map((code, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between px-3 py-2 bg-white dark:bg-muted rounded font-mono text-sm"
+                        >
+                          <span>{code}</span>
+                          <button
+                            onClick={() => copyToClipboard(code)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            {copiedCode === code ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(backupCodes.join('\n'))}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy All Codes
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-2"
+                      onClick={() => setShowBackupCodes(false)}
+                    >
+                      I've saved them
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -712,26 +1144,101 @@ export function Settings() {
                   <div>
                     <p className="font-medium">Export Data</p>
                     <p className="text-sm text-muted-foreground">
-                      Download a copy of all your data
+                      Download a ZIP file with all your data (JSON & CSV formats)
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleExportData}>
+                  <Button variant="outline" size="sm" onClick={handleExportData} disabled={exporting}>
                     <Download className="h-4 w-4 mr-2" />
-                    Export
+                    {exporting ? 'Exporting...' : 'Export'}
                   </Button>
                 </div>
 
-                <div className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="font-medium text-red-600">Delete Account</p>
-                    <p className="text-sm text-muted-foreground">
-                      Permanently delete your account and all data
-                    </p>
+                <div className="py-3">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="font-medium text-red-600">Delete Account</p>
+                      <p className="text-sm text-muted-foreground">
+                        Permanently delete your account and all data
+                      </p>
+                    </div>
+                    {!showDeleteConfirm && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setDeletePassword('');
+                          setDeleteConfirmText('');
+                          setShowDeleteConfirm(false);
+                        }}
+                        disabled={deleting}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Account
+                      </Button>
+                    )}
                   </div>
-                  <Button variant="destructive" size="sm" disabled>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
+
+                  {!showDeleteConfirm ? (
+                    <div className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
+                      <p className="text-sm text-red-700 dark:text-red-300 mb-3">
+                        Enter your password to begin the account deletion process:
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          placeholder="Your password"
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="destructive"
+                          onClick={handleRequestDeletion}
+                          disabled={deleting || !deletePassword}
+                        >
+                          {deleting ? 'Verifying...' : 'Continue'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 border border-red-500 rounded-lg bg-red-50 dark:bg-red-900/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <p className="font-medium text-red-700 dark:text-red-300">Final Confirmation</p>
+                      </div>
+                      <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+                        This action cannot be undone. All your data including portfolios, recipes, books, plants, and settings will be permanently deleted.
+                      </p>
+                      <p className="text-sm font-medium mb-2">
+                        Type <code className="px-2 py-1 bg-red-100 dark:bg-red-900 rounded">DELETE MY ACCOUNT</code> to confirm:
+                      </p>
+                      <Input
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="DELETE MY ACCOUNT"
+                        className="mb-3"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            setDeletePassword('');
+                            setDeleteConfirmText('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleConfirmDeletion}
+                          disabled={deleting || deleteConfirmText !== 'DELETE MY ACCOUNT'}
+                        >
+                          {deleting ? 'Deleting...' : 'Permanently Delete Account'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -886,7 +1393,8 @@ export function Settings() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </div>
+        </div>
+      )}
+    </PageLayout>
   );
 }

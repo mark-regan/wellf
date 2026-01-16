@@ -21,10 +21,6 @@ import (
 	"github.com/mark-regan/wellf/pkg/validator"
 )
 
-func formatCurrency(amount float64, currency string) string {
-	return fmt.Sprintf("%.2f %s", amount, currency)
-}
-
 type TransactionHandler struct {
 	txRepo        *repository.TransactionRepository
 	holdingRepo   *repository.HoldingRepository
